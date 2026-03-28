@@ -110,6 +110,14 @@ func _draw_pieces() -> void:
 		# Draw piece rectangle
 		draw_rect(piece_rect, bg_color)
 		draw_rect(piece_rect, Color(0.1, 0.1, 0.1), false, 2.0)
+		# Revealed indicator: yellow circle in top-right corner
+		if is_own and is_revealed:
+			var marker_radius: float = cell_size * 0.12
+			var marker_pos: Vector2 = Vector2(
+				piece_rect.position.x + piece_rect.size.x - marker_radius - 2.0,
+				piece_rect.position.y + marker_radius + 2.0,
+			)
+			draw_circle(marker_pos, marker_radius, Color(1.0, 0.85, 0.0))
 
 		# Draw rank text if visible
 		if is_own or is_revealed:
