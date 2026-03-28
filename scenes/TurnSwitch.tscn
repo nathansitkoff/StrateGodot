@@ -1,0 +1,28 @@
+[gd_scene format=3 uid="uid://turns01"]
+
+[ext_resource type="Script" path="res://scripts/ui/turn_switch.gd" id="1"]
+
+[node name="TurnSwitch" type="ColorRect"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.15, 0.15, 0.15, 1)
+script = ExtResource("1")
+
+[node name="TurnSwitchLabel" type="Label" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -200
+offset_top = -50
+offset_right = 200
+offset_bottom = 50
+horizontal_alignment = 1
+vertical_alignment = 1

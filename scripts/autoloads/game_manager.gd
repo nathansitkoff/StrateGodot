@@ -15,7 +15,7 @@ enum GameMode {
 
 signal phase_changed(phase: GamePhase)
 signal turn_changed(team: PieceData.Team)
-signal combat_occurred(attacker_id: int, defender_id: int, result: Combat.Result, pos: Vector2i)
+signal combat_occurred(combat_info: Dictionary)
 signal game_ended(winner: PieceData.Team)
 
 var current_phase: GamePhase = GamePhase.MENU
@@ -58,10 +58,14 @@ func execute_move(from: Vector2i, to: Vector2i) -> void:
 		# Simple move
 		board_state.move_piece(piece_id, to)
 	else:
-		# Combat
+		# Combat — capture info before pieces are removed
 		var attacker: Dictionary = board_state.pieces[piece_id]
 		var defender: Dictionary = board_state.pieces[target_id]
-		var result: Combat.Result = Combat.resolve(attacker["rank"], defender["rank"])
+		var atk_rank: PieceData.Rank = attacker["rank"]
+		var def_rank: PieceData.Rank = defender["rank"]
+		var atk_team: PieceData.Team = attacker["team"]
+		var def_team: PieceData.Team = defender["team"]
+		var result: Combat.Result = Combat.resolve(atk_rank, def_rank)
 
 		# Reveal both pieces involved in combat
 		attacker["revealed"] = true
@@ -69,23 +73,31 @@ func execute_move(from: Vector2i, to: Vector2i) -> void:
 
 		match result:
 			Combat.Result.ATTACKER_WINS:
-				captured_pieces[defender["team"]].append(defender["rank"])
+				captured_pieces[def_team].append(def_rank)
 				board_state.remove_piece(target_id)
 				board_state.move_piece(piece_id, to)
 			Combat.Result.DEFENDER_WINS:
-				captured_pieces[attacker["team"]].append(attacker["rank"])
+				captured_pieces[atk_team].append(atk_rank)
 				board_state.remove_piece(piece_id)
 			Combat.Result.BOTH_DIE:
-				captured_pieces[attacker["team"]].append(attacker["rank"])
-				captured_pieces[defender["team"]].append(defender["rank"])
+				captured_pieces[atk_team].append(atk_rank)
+				captured_pieces[def_team].append(def_rank)
 				board_state.remove_piece(piece_id)
 				board_state.remove_piece(target_id)
 
-		combat_occurred.emit(piece_id, target_id, result, to)
+		var combat_info: Dictionary = {
+			"atk_rank": atk_rank,
+			"def_rank": def_rank,
+			"atk_team": atk_team,
+			"def_team": def_team,
+			"result": result,
+			"pos": to,
+		}
+		combat_occurred.emit(combat_info)
 
 		# Check if flag was captured
-		if defender["rank"] == PieceData.Rank.FLAG:
-			_end_game(attacker["team"])
+		if def_rank == PieceData.Rank.FLAG:
+			_end_game(atk_team)
 			return
 
 	end_turn()
