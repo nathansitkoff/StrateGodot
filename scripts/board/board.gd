@@ -12,12 +12,14 @@ const BOARD_COLORS: Dictionary = {
 	"red_piece": Color(0.8, 0.2, 0.2),
 	"blue_piece": Color(0.2, 0.3, 0.8),
 	"hidden_piece": Color(0.5, 0.5, 0.5),
+	"last_move": Color(1.0, 0.5, 0.0),
 }
 
 var cell_size: float = 60.0
 var board_offset: Vector2 = Vector2.ZERO
 var selected_piece_id: int = -1
 var valid_moves: Array[Vector2i] = []
+var last_enemy_move: Vector2i = Vector2i(-1, -1)
 
 
 func _ready() -> void:
@@ -62,6 +64,10 @@ func _draw() -> void:
 			if pos in valid_moves:
 				draw_rect(rect, BOARD_COLORS["highlight"])
 
+			# Highlight last enemy move with thick border
+			if pos == last_enemy_move:
+				draw_rect(rect.grow(-4.0), BOARD_COLORS["last_move"], false, 8.0)
+
 			# Draw grid lines
 			draw_rect(rect, Color(0.3, 0.3, 0.3), false, 1.0)
 
@@ -76,6 +82,9 @@ func _get_viewing_team() -> PieceData.Team:
 		GameManager.GamePhase.SETUP_BLUE:
 			return PieceData.Team.BLUE
 		_:
+			# In AI mode, human is always Red
+			if GameManager.game_mode == GameManager.GameMode.VS_AI:
+				return PieceData.Team.RED
 			return GameManager.current_team
 
 
@@ -169,4 +178,10 @@ func clear_selection() -> void:
 
 
 func refresh() -> void:
+	# Show last enemy move highlight if the last move was from the other team
+	var viewing: PieceData.Team = _get_viewing_team()
+	if GameManager.last_move_team != viewing and GameManager.last_move_to != Vector2i(-1, -1):
+		last_enemy_move = GameManager.last_move_to
+	else:
+		last_enemy_move = Vector2i(-1, -1)
 	queue_redraw()

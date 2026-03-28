@@ -23,6 +23,9 @@ var current_team: PieceData.Team = PieceData.Team.RED
 var game_mode: GameMode = GameMode.LOCAL_2P
 var board_state: BoardState = BoardState.new()
 var winner: PieceData.Team = PieceData.Team.RED
+var last_move_from: Vector2i = Vector2i(-1, -1)
+var last_move_to: Vector2i = Vector2i(-1, -1)
+var last_move_team: PieceData.Team = PieceData.Team.RED
 var captured_pieces: Dictionary = {
 	PieceData.Team.RED: [] as Array[PieceData.Rank],
 	PieceData.Team.BLUE: [] as Array[PieceData.Rank],
@@ -51,6 +54,10 @@ func execute_move(from: Vector2i, to: Vector2i) -> void:
 	var piece_id: int = board_state.get_piece_at(from)
 	if piece_id == -1:
 		return
+
+	last_move_from = from
+	last_move_to = to
+	last_move_team = current_team
 
 	var target_id: int = board_state.get_piece_at(to)
 
