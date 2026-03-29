@@ -55,7 +55,7 @@ func _on_phase_changed(phase: GameManager.GamePhase) -> void:
 			hud.visible = true
 			hud.clear_combat()
 			hud.update_turn(GameManager.current_team)
-			hud.update_captured()
+			hud.update_enemy_remaining(_get_viewing_team())
 			board.refresh()
 		GameManager.GamePhase.GAME_OVER:
 			pass
@@ -68,7 +68,7 @@ func _on_setup_complete(team: PieceData.Team) -> void:
 func _on_turn_changed(team: PieceData.Team) -> void:
 	board.clear_selection()
 	hud.update_turn(team)
-	hud.update_captured()
+	hud.update_enemy_remaining(_get_viewing_team())
 
 	if _is_ai_team(team):
 		_schedule_ai_move()
@@ -90,7 +90,7 @@ func _on_combat_occurred(combat_info: Dictionary) -> void:
 
 func _on_game_ended(winner: PieceData.Team) -> void:
 	board.refresh()
-	hud.update_captured()
+	hud.update_enemy_remaining(_get_viewing_team())
 	game_over.show_winner(winner)
 
 
@@ -104,6 +104,12 @@ func _on_turn_switch_acknowledged() -> void:
 func _on_play_again() -> void:
 	hud.visible = false
 	main_menu.visible = true
+
+
+func _get_viewing_team() -> PieceData.Team:
+	if GameManager.game_mode == GameManager.GameMode.VS_AI:
+		return PieceData.Team.RED
+	return GameManager.current_team
 
 
 func _is_ai_team(team: PieceData.Team) -> bool:

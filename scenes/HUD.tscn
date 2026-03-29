@@ -4,11 +4,15 @@
 
 [node name="HUD" type="PanelContainer"]
 layout_mode = 3
-anchors_preset = 3
+anchors_preset = -1
 anchor_left = 1.0
+anchor_top = 0.0
 anchor_right = 1.0
 anchor_bottom = 1.0
 offset_left = -220
+offset_top = 0
+offset_right = 0
+offset_bottom = 0
 grow_horizontal = 0
 grow_vertical = 2
 mouse_filter = 2
@@ -23,6 +27,7 @@ theme_override_constants/margin_bottom = 10
 
 [node name="VBox" type="VBoxContainer" parent="MarginContainer"]
 layout_mode = 2
+size_flags_vertical = 3
 
 [node name="TurnLabel" type="Label" parent="MarginContainer/VBox"]
 unique_name_in_owner = true
@@ -32,6 +37,21 @@ horizontal_alignment = 1
 
 [node name="Sep1" type="HSeparator" parent="MarginContainer/VBox"]
 layout_mode = 2
+
+[node name="EnemyRemainingLabel" type="Label" parent="MarginContainer/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Enemy Remaining:"
+
+[node name="EnemyRemainingList" type="Label" parent="MarginContainer/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = ""
+autowrap_mode = 2
+
+[node name="Spacer" type="Control" parent="MarginContainer/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
 
 [node name="CombatContainer" type="VBoxContainer" parent="MarginContainer/VBox"]
 unique_name_in_owner = true
@@ -56,34 +76,3 @@ horizontal_alignment = 1
 autowrap_mode = 2
 visible = false
 modulate = Color(0.7, 0.7, 0.7, 1)
-
-[node name="Sep2" type="HSeparator" parent="MarginContainer/VBox/CombatContainer"]
-layout_mode = 2
-
-[node name="Sep3" type="HSeparator" parent="MarginContainer/VBox"]
-layout_mode = 2
-
-[node name="RedCapturedLabel" type="Label" parent="MarginContainer/VBox"]
-unique_name_in_owner = true
-layout_mode = 2
-text = "Red Lost (0):"
-
-[node name="RedCapturedList" type="Label" parent="MarginContainer/VBox"]
-unique_name_in_owner = true
-layout_mode = 2
-text = "  None"
-autowrap_mode = 2
-
-[node name="Sep4" type="HSeparator" parent="MarginContainer/VBox"]
-layout_mode = 2
-
-[node name="BlueCapturedLabel" type="Label" parent="MarginContainer/VBox"]
-unique_name_in_owner = true
-layout_mode = 2
-text = "Blue Lost (0):"
-
-[node name="BlueCapturedList" type="Label" parent="MarginContainer/VBox"]
-unique_name_in_owner = true
-layout_mode = 2
-text = "  None"
-autowrap_mode = 2

@@ -1,13 +1,11 @@
 extends PanelContainer
 
 @onready var turn_label: Label = %TurnLabel
+@onready var enemy_remaining_label: Label = %EnemyRemainingLabel
+@onready var enemy_remaining_list: Label = %EnemyRemainingList
 @onready var combat_container: VBoxContainer = %CombatContainer
 @onready var combat_label_1: Label = %CombatLabel1
 @onready var combat_label_2: Label = %CombatLabel2
-@onready var red_captured_label: Label = %RedCapturedLabel
-@onready var red_captured_list: Label = %RedCapturedList
-@onready var blue_captured_label: Label = %BlueCapturedLabel
-@onready var blue_captured_list: Label = %BlueCapturedList
 
 var _last_combat_text: String = ""
 
@@ -21,6 +19,45 @@ func update_turn(team: PieceData.Team) -> void:
 	var color: Color = Color(0.9, 0.3, 0.3) if team == PieceData.Team.RED else Color(0.3, 0.4, 0.9)
 	turn_label.text = "%s's Turn" % team_name
 	turn_label.add_theme_color_override("font_color", color)
+
+
+func update_enemy_remaining(viewing_team: PieceData.Team) -> void:
+	var enemy_team: PieceData.Team
+	if viewing_team == PieceData.Team.RED:
+		enemy_team = PieceData.Team.BLUE
+	else:
+		enemy_team = PieceData.Team.RED
+
+	var enemy_name: String = "RED" if enemy_team == PieceData.Team.RED else "BLUE"
+	enemy_remaining_label.text = "%s Remaining:" % enemy_name
+
+	# Start with full counts, subtract captured
+	var lost: Array = GameManager.captured_pieces[enemy_team]
+	var lost_counts: Dictionary = {}
+	for rank: int in lost:
+		if rank not in lost_counts:
+			lost_counts[rank] = 0
+		lost_counts[rank] += 1
+
+	var lines: Array[String] = []
+	# Sort ranks descending (highest first)
+	var ranks: Array = PieceData.RANK_INFO.keys()
+	ranks.sort()
+	ranks.reverse()
+
+	for rank: int in ranks:
+		var info: Dictionary = PieceData.RANK_INFO[rank]
+		var total: int = info["count"]
+		var dead: int = lost_counts.get(rank, 0)
+		var alive: int = total - dead
+		var display: String = info["display"]
+		var rank_name: String = info["name"]
+		if alive > 0:
+			lines.append("  %s (%s): %d/%d" % [rank_name, display, alive, total])
+		else:
+			lines.append("  %s (%s): 0/%d" % [rank_name, display, total])
+
+	enemy_remaining_list.text = "\n".join(lines)
 
 
 func show_combat_result(atk_rank: PieceData.Rank, def_rank: PieceData.Rank, atk_team: PieceData.Team, result: Combat.Result) -> void:
@@ -55,40 +92,3 @@ func clear_combat() -> void:
 	combat_label_2.text = ""
 	combat_label_2.visible = false
 	_last_combat_text = ""
-
-
-func update_captured() -> void:
-	var red_lost: Array = GameManager.captured_pieces[PieceData.Team.RED]
-	var blue_lost: Array = GameManager.captured_pieces[PieceData.Team.BLUE]
-
-	red_captured_label.text = "Red Lost (%d):" % red_lost.size()
-	red_captured_list.text = _format_captured(red_lost)
-
-	blue_captured_label.text = "Blue Lost (%d):" % blue_lost.size()
-	blue_captured_list.text = _format_captured(blue_lost)
-
-
-func _format_captured(pieces: Array) -> String:
-	if pieces.size() == 0:
-		return "  None"
-
-	var counts: Dictionary = {}
-	for rank: int in pieces:
-		if rank not in counts:
-			counts[rank] = 0
-		counts[rank] += 1
-
-	var sorted_ranks: Array = counts.keys()
-	sorted_ranks.sort()
-	sorted_ranks.reverse()
-
-	var lines: Array[String] = []
-	for rank: int in sorted_ranks:
-		var display: String = PieceData.get_rank_display(rank)
-		var name: String = PieceData.get_rank_name(rank)
-		if counts[rank] > 1:
-			lines.append("  %s (%s) x%d" % [name, display, counts[rank]])
-		else:
-			lines.append("  %s (%s)" % [name, display])
-
-	return "\n".join(lines)
