@@ -59,6 +59,12 @@ func execute_move(from: Vector2i, to: Vector2i) -> void:
 	last_move_to = to
 	last_move_team = current_team
 
+	# Reveal scouts that move more than one space
+	var piece: Dictionary = board_state.pieces[piece_id]
+	var distance: int = abs(to.x - from.x) + abs(to.y - from.y)
+	if piece["rank"] == PieceData.Rank.SCOUT and distance > 1:
+		piece["revealed"] = true
+
 	var target_id: int = board_state.get_piece_at(to)
 
 	if target_id == -1:
