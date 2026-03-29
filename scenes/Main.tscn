@@ -4,9 +4,9 @@
 [ext_resource type="PackedScene" path="res://scenes/Board.tscn" id="2"]
 [ext_resource type="PackedScene" path="res://scenes/SetupPhase.tscn" id="3"]
 [ext_resource type="PackedScene" path="res://scenes/TurnSwitch.tscn" id="4"]
-[ext_resource type="PackedScene" path="res://scenes/CombatPopup.tscn" id="5"]
-[ext_resource type="PackedScene" path="res://scenes/GameOver.tscn" id="6"]
-[ext_resource type="PackedScene" path="res://scenes/MainMenu.tscn" id="7"]
+[ext_resource type="PackedScene" path="res://scenes/GameOver.tscn" id="5"]
+[ext_resource type="PackedScene" path="res://scenes/MainMenu.tscn" id="6"]
+[ext_resource type="PackedScene" path="res://scenes/HUD.tscn" id="7"]
 
 [node name="Main" type="Control"]
 layout_mode = 3
@@ -21,6 +21,11 @@ script = ExtResource("1")
 unique_name_in_owner = true
 layout_mode = 1
 
+[node name="HUD" parent="." instance=ExtResource("7")]
+unique_name_in_owner = true
+layout_mode = 1
+visible = false
+
 [node name="SetupPhase" parent="." instance=ExtResource("3")]
 unique_name_in_owner = true
 layout_mode = 1
@@ -31,16 +36,11 @@ unique_name_in_owner = true
 layout_mode = 1
 visible = false
 
-[node name="CombatPopup" parent="." instance=ExtResource("5")]
+[node name="GameOver" parent="." instance=ExtResource("5")]
 unique_name_in_owner = true
 layout_mode = 1
 visible = false
 
-[node name="GameOver" parent="." instance=ExtResource("6")]
-unique_name_in_owner = true
-layout_mode = 1
-visible = false
-
-[node name="MainMenu" parent="." instance=ExtResource("7")]
+[node name="MainMenu" parent="." instance=ExtResource("6")]
 unique_name_in_owner = true
 layout_mode = 1
