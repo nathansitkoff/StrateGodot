@@ -48,3 +48,13 @@ unique_name_in_owner = true
 layout_mode = 2
 custom_minimum_size = Vector2(0, 50)
 text = "vs AI"
+
+[node name="Spacer3" type="Control" parent="VBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 10)
+
+[node name="AITestButton" type="Button" parent="VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(0, 50)
+text = "AI Test"

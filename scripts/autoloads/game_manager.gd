@@ -11,6 +11,7 @@ enum GamePhase {
 enum GameMode {
 	LOCAL_2P,
 	VS_AI,
+	AI_TEST,
 }
 
 signal phase_changed(phase: GamePhase)
@@ -37,6 +38,8 @@ func start_game(mode: GameMode) -> void:
 	board_state.reset()
 	captured_pieces[PieceData.Team.RED].clear()
 	captured_pieces[PieceData.Team.BLUE].clear()
+	last_move_from = Vector2i(-1, -1)
+	last_move_to = Vector2i(-1, -1)
 	current_team = PieceData.Team.RED
 	_set_phase(GamePhase.SETUP_RED)
 
@@ -45,9 +48,30 @@ func finish_setup(team: PieceData.Team) -> void:
 	if team == PieceData.Team.RED:
 		_set_phase(GamePhase.SETUP_BLUE)
 	else:
+		# In AI_TEST mode, treat unplaced pieces as captured
+		if game_mode == GameMode.AI_TEST:
+			_register_unplaced_as_captured(PieceData.Team.RED)
+			_register_unplaced_as_captured(PieceData.Team.BLUE)
 		current_team = PieceData.Team.RED
 		_set_phase(GamePhase.PLAY)
 		turn_changed.emit(current_team)
+
+
+func _register_unplaced_as_captured(team_to_check: PieceData.Team) -> void:
+	# Count placed pieces per rank
+	var placed: Dictionary = {}
+	for rank: int in PieceData.RANK_INFO:
+		placed[rank] = 0
+	for piece_id: int in board_state.pieces:
+		var piece: Dictionary = board_state.pieces[piece_id]
+		if piece["team"] == team_to_check:
+			placed[piece["rank"]] += 1
+	# Add unplaced as captured
+	for rank: int in PieceData.RANK_INFO:
+		var total: int = PieceData.RANK_INFO[rank]["count"]
+		var missing: int = total - placed[rank]
+		for i: int in range(missing):
+			captured_pieces[team_to_check].append(rank)
 
 
 func execute_move(from: Vector2i, to: Vector2i) -> void:

@@ -82,8 +82,8 @@ func _get_viewing_team() -> PieceData.Team:
 		GameManager.GamePhase.SETUP_BLUE:
 			return PieceData.Team.BLUE
 		_:
-			# In AI mode, human is always Red
-			if GameManager.game_mode == GameManager.GameMode.VS_AI:
+			# In AI modes, human is always Red
+			if GameManager.game_mode == GameManager.GameMode.VS_AI or GameManager.game_mode == GameManager.GameMode.AI_TEST:
 				return PieceData.Team.RED
 			return GameManager.current_team
 
@@ -91,6 +91,7 @@ func _get_viewing_team() -> PieceData.Team:
 func _draw_pieces() -> void:
 	var viewing_team: PieceData.Team = _get_viewing_team()
 	var board: BoardState = GameManager.board_state
+	var see_all: bool = GameManager.game_mode == GameManager.GameMode.AI_TEST
 
 	for piece_id: int in board.pieces:
 		var piece: Dictionary = board.pieces[piece_id]
@@ -98,21 +99,18 @@ func _draw_pieces() -> void:
 		var rect: Rect2 = _get_cell_rect(pos)
 		var piece_rect: Rect2 = rect.grow(-4.0)
 
-		var is_own: bool = piece["team"] == viewing_team
+		var is_own: bool = piece["team"] == viewing_team or see_all
 		var is_revealed: bool = piece["revealed"]
 
 		# Piece background color
 		var bg_color: Color
-		if is_own:
-			if piece["team"] == PieceData.Team.RED:
-				bg_color = BOARD_COLORS["red_piece"]
-			else:
+		if piece["team"] == PieceData.Team.RED:
+			bg_color = BOARD_COLORS["red_piece"]
+		elif piece["team"] == PieceData.Team.BLUE:
+			if is_own or is_revealed:
 				bg_color = BOARD_COLORS["blue_piece"]
-		elif is_revealed:
-			if piece["team"] == PieceData.Team.RED:
-				bg_color = BOARD_COLORS["red_piece"].lerp(BOARD_COLORS["hidden_piece"], 0.3)
 			else:
-				bg_color = BOARD_COLORS["blue_piece"].lerp(BOARD_COLORS["hidden_piece"], 0.3)
+				bg_color = BOARD_COLORS["hidden_piece"]
 		else:
 			bg_color = BOARD_COLORS["hidden_piece"]
 

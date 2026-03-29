@@ -3,10 +3,88 @@ extends RefCounted
 
 var team: PieceData.Team = PieceData.Team.BLUE
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
+# Track enemy piece IDs that have moved at least once
+var _has_moved: Dictionary = {}
 
 
 func _init() -> void:
 	_rng.randomize()
+
+
+func reset() -> void:
+	_has_moved.clear()
+
+
+func notify_move(piece_id: int, piece_team: PieceData.Team) -> void:
+	if piece_team != team:
+		_has_moved[piece_id] = true
+
+
+func _get_enemy_team() -> PieceData.Team:
+	if team == PieceData.Team.BLUE:
+		return PieceData.Team.RED
+	return PieceData.Team.BLUE
+
+
+# Returns the set of ranks an unrevealed enemy piece could possibly be.
+func _get_possible_ranks(piece_id: int, board_state: BoardState) -> Array[int]:
+	var enemy_team: PieceData.Team = _get_enemy_team()
+
+	# Count how many of each rank are accounted for (revealed alive + captured)
+	var accounted: Dictionary = {}
+	for rank: int in PieceData.RANK_INFO:
+		accounted[rank] = 0
+
+	# Count revealed enemy pieces still on the board
+	for pid: int in board_state.pieces:
+		var p: Dictionary = board_state.pieces[pid]
+		if p["team"] == enemy_team and p["revealed"]:
+			accounted[p["rank"]] += 1
+
+	# Count captured enemy pieces
+	var captured: Array = GameManager.captured_pieces[enemy_team]
+	for rank: int in captured:
+		accounted[rank] += 1
+
+	# Build list of possible ranks
+	var possible: Array[int] = []
+	var has_moved: bool = piece_id in _has_moved
+
+	for rank: int in PieceData.RANK_INFO:
+		var total: int = PieceData.RANK_INFO[rank]["count"]
+		# All of this rank are accounted for
+		if accounted[rank] >= total:
+			continue
+		# Piece has moved, so it can't be a bomb or flag
+		if has_moved and (rank == PieceData.Rank.BOMB or rank == PieceData.Rank.FLAG):
+			continue
+		possible.append(rank)
+
+	return possible
+
+
+# Returns the highest rank an unrevealed enemy piece could possibly be.
+func _get_max_possible_rank(piece_id: int, board_state: BoardState) -> int:
+	var possible: Array[int] = _get_possible_ranks(piece_id, board_state)
+	if possible.size() == 0:
+		return PieceData.Rank.MARSHAL
+	var max_rank: int = possible[0]
+	for rank: int in possible:
+		if rank > max_rank:
+			max_rank = rank
+	return max_rank
+
+
+# Returns true if our piece is guaranteed to win against an unrevealed enemy.
+func _is_guaranteed_win(our_rank: PieceData.Rank, enemy_piece_id: int, board_state: BoardState) -> bool:
+	var possible: Array[int] = _get_possible_ranks(enemy_piece_id, board_state)
+	if possible.size() == 0:
+		return false
+	for rank: int in possible:
+		var result: Combat.Result = Combat.resolve(our_rank, rank)
+		if result != Combat.Result.ATTACKER_WINS:
+			return false
+	return true
 
 
 func generate_setup(board_state: BoardState) -> void:
@@ -49,7 +127,6 @@ func generate_setup(board_state: BoardState) -> void:
 			bomb_positions.append(pos)
 			back_cells.erase(pos)
 			bomb_count += 1
-	# Place remaining bombs in second row near flag
 	for pos: Vector2i in second_cells.duplicate():
 		if bomb_count >= 6:
 			break
@@ -57,7 +134,6 @@ func generate_setup(board_state: BoardState) -> void:
 			bomb_positions.append(pos)
 			second_cells.erase(pos)
 			bomb_count += 1
-	# Fill remaining bombs anywhere in back/second
 	var overflow_cells: Array[Vector2i] = back_cells.duplicate()
 	overflow_cells.append_array(second_cells.duplicate())
 	overflow_cells.shuffle()
@@ -75,14 +151,12 @@ func generate_setup(board_state: BoardState) -> void:
 	for pos: Vector2i in bomb_positions:
 		board_state.add_piece(PieceData.Rank.BOMB, team, pos)
 
-	# Remaining cells pool: back + second + front
 	var remaining_cells: Array[Vector2i] = []
 	remaining_cells.append_array(back_cells)
 	remaining_cells.append_array(second_cells)
 	remaining_cells.append_array(front_cells)
 	remaining_cells.shuffle()
 
-	# Place high-value pieces in back two rows
 	var high_ranks: Array[int] = [PieceData.Rank.MARSHAL, PieceData.Rank.GENERAL]
 	var back_and_second: Array[Vector2i] = []
 	var other_cells: Array[Vector2i] = []
@@ -98,13 +172,11 @@ func generate_setup(board_state: BoardState) -> void:
 			board_state.add_piece(rank, team, back_and_second[cell_idx])
 			cell_idx += 1
 
-	# Scouts biased toward front rows
 	var scout_cells: Array[Vector2i] = []
 	scout_cells.append_array(other_cells)
 	for i: int in range(cell_idx, back_and_second.size()):
 		scout_cells.append(back_and_second[i])
 	scout_cells.shuffle()
-	# Move front cells to the beginning for scouts
 	var front_first: Array[Vector2i] = []
 	var back_rest: Array[Vector2i] = []
 	for pos: Vector2i in scout_cells:
@@ -116,7 +188,6 @@ func generate_setup(board_state: BoardState) -> void:
 	ordered_cells.append_array(front_first)
 	ordered_cells.append_array(back_rest)
 
-	# Place scouts first (8 of them, preferring front)
 	var placed: int = 0
 	var scout_count: int = PieceData.get_count(PieceData.Rank.SCOUT)
 	var used_positions: Array[Vector2i] = []
@@ -127,7 +198,6 @@ func generate_setup(board_state: BoardState) -> void:
 		used_positions.append(pos)
 		placed += 1
 
-	# Remaining pieces in remaining cells
 	var final_cells: Array[Vector2i] = []
 	for pos: Vector2i in ordered_cells:
 		if pos not in used_positions:
@@ -149,17 +219,16 @@ func generate_setup(board_state: BoardState) -> void:
 
 
 func choose_move(board_state: BoardState) -> Dictionary:
-	# Returns { "from": Vector2i, "to": Vector2i }
 	var my_pieces: Array[int] = board_state.get_team_pieces(team)
-	var enemy_team: PieceData.Team = PieceData.Team.RED if team == PieceData.Team.BLUE else PieceData.Team.BLUE
+	var enemy_team: PieceData.Team = _get_enemy_team()
 
 	# 1. Capture known flag
 	var flag_move: Dictionary = _find_flag_capture(board_state, my_pieces)
 	if flag_move.size() > 0:
 		return flag_move
 
-	# 2. Win obvious attacks against revealed enemies
-	var winning_attack: Dictionary = _find_winning_attack(board_state, my_pieces)
+	# 2. Win attacks (revealed or guaranteed against unrevealed)
+	var winning_attack: Dictionary = _find_winning_attack(board_state, my_pieces, enemy_team)
 	if winning_attack.size() > 0:
 		return winning_attack
 
@@ -197,7 +266,7 @@ func _find_flag_capture(board_state: BoardState, my_pieces: Array[int]) -> Dicti
 	return {}
 
 
-func _find_winning_attack(board_state: BoardState, my_pieces: Array[int]) -> Dictionary:
+func _find_winning_attack(board_state: BoardState, my_pieces: Array[int], enemy_team: PieceData.Team) -> Dictionary:
 	var best_move: Dictionary = {}
 	var best_value: int = -1
 
@@ -211,15 +280,24 @@ func _find_winning_attack(board_state: BoardState, my_pieces: Array[int]) -> Dic
 			if target_id == -1:
 				continue
 			var target: Dictionary = board_state.pieces[target_id]
-			if not target["revealed"]:
+			if target["team"] == team:
 				continue
-			var result: Combat.Result = Combat.resolve(piece["rank"], target["rank"])
-			if result == Combat.Result.ATTACKER_WINS:
-				# Prefer capturing higher-value targets
-				var value: int = target["rank"] as int
-				if value > best_value:
-					best_value = value
-					best_move = { "from": piece["pos"], "to": target_pos }
+
+			if target["revealed"]:
+				# Known piece — check if we win
+				var result: Combat.Result = Combat.resolve(piece["rank"], target["rank"])
+				if result == Combat.Result.ATTACKER_WINS:
+					var value: int = target["rank"] as int
+					if value > best_value:
+						best_value = value
+						best_move = { "from": piece["pos"], "to": target_pos }
+			else:
+				# Unrevealed piece — check if guaranteed win
+				if _is_guaranteed_win(piece["rank"], target_id, board_state):
+					var max_rank: int = _get_max_possible_rank(target_id, board_state)
+					if max_rank > best_value:
+						best_value = max_rank
+						best_move = { "from": piece["pos"], "to": target_pos }
 
 	return best_move
 
@@ -233,7 +311,6 @@ func _find_retreat(board_state: BoardState, my_pieces: Array[int], enemy_team: P
 		var piece: Dictionary = board_state.pieces[piece_id]
 		if not piece["revealed"] or not PieceData.can_move(piece["rank"]):
 			continue
-		# Check if threatened by adjacent stronger revealed enemy
 		var threatened: bool = false
 		for dir: Vector2i in directions:
 			var adj: Vector2i = piece["pos"] + dir
@@ -248,7 +325,6 @@ func _find_retreat(board_state: BoardState, my_pieces: Array[int], enemy_team: P
 
 		if threatened:
 			var moves: Array[Vector2i] = board_state.get_valid_moves(piece_id)
-			# Find a safe retreat square
 			for move: Vector2i in moves:
 				if board_state.get_piece_at(move) != -1:
 					continue
@@ -280,17 +356,14 @@ func _find_scout_probe(board_state: BoardState, my_pieces: Array[int], enemy_tea
 		var moves: Array[Vector2i] = board_state.get_valid_moves(piece_id)
 		for target_pos: Vector2i in moves:
 			var target_id: int = board_state.get_piece_at(target_pos)
-			# Attack unrevealed enemies
 			if target_id != -1:
 				var target: Dictionary = board_state.pieces[target_id]
 				if target["team"] == enemy_team and not target["revealed"]:
 					candidates.append({ "from": piece["pos"], "to": target_pos, "priority": 2 })
-			# Or move forward
 			elif (target_pos.y - piece["pos"].y) * forward_dir > 0:
 				candidates.append({ "from": piece["pos"], "to": target_pos, "priority": 1 })
 
 	if candidates.size() > 0:
-		# Prefer attacking over just moving
 		candidates.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a["priority"] > b["priority"])
 		return { "from": candidates[0]["from"], "to": candidates[0]["to"] }
 
@@ -305,7 +378,6 @@ func _find_advance(board_state: BoardState, my_pieces: Array[int]) -> Dictionary
 		var piece: Dictionary = board_state.pieces[piece_id]
 		if not PieceData.can_move(piece["rank"]):
 			continue
-		# Skip high-value pieces from advancing aggressively
 		if piece["rank"] == PieceData.Rank.MARSHAL or piece["rank"] == PieceData.Rank.GENERAL:
 			continue
 		var moves: Array[Vector2i] = board_state.get_valid_moves(piece_id)
