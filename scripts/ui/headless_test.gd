@@ -59,7 +59,9 @@ func _run_batch() -> void:
 		var ai_blue: AIPlayer = AIPlayer.new()
 		ai_blue.team = PieceData.Team.BLUE
 
-		var winner: PieceData.Team = GameManager.run_headless_game(ai_red, ai_blue)
+		# Alternate who goes first each game
+		var starting: PieceData.Team = PieceData.Team.RED if _games_played % 2 == 0 else PieceData.Team.BLUE
+		var winner: PieceData.Team = GameManager.run_headless_game(ai_red, ai_blue, starting)
 		if winner == PieceData.Team.RED:
 			_red_wins += 1
 		else:

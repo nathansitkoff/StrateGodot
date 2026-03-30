@@ -8,12 +8,13 @@ extends Control
 @onready var turn_bar: PanelContainer = %TurnBar
 @onready var turn_label: Label = %TurnLabel
 @onready var game_over: ColorRect = %GameOver
+@onready var game_options: ColorRect = %GameOptions
 @onready var headless_test: ColorRect = %HeadlessTest
 @onready var main_menu: ColorRect = %MainMenu
 
 var play_controller: Node
-# AI players keyed by team — null entries mean human-controlled
 var ai_players: Dictionary = {}
+var _pending_mode: GameManager.GameMode = GameManager.GameMode.LOCAL_2P
 
 const AI_MOVE_DELAY: float = 0.5
 
@@ -29,6 +30,7 @@ func _ready() -> void:
 	game_over.play_again_pressed.connect(_on_play_again)
 	main_menu.mode_selected.connect(_on_mode_selected)
 	main_menu.headless_selected.connect(_on_headless_selected)
+	game_options.options_confirmed.connect(_on_options_confirmed)
 	headless_test.back_pressed.connect(_on_headless_back)
 
 	play_controller = Node.new()
@@ -38,6 +40,12 @@ func _ready() -> void:
 
 
 func _on_mode_selected(mode: GameManager.GameMode) -> void:
+	_pending_mode = mode
+	_setup_ai_players(mode)
+	game_options.show_options()
+
+
+func _setup_ai_players(mode: GameManager.GameMode) -> void:
 	ai_players.clear()
 	match mode:
 		GameManager.GameMode.VS_AI:
@@ -57,7 +65,10 @@ func _on_mode_selected(mode: GameManager.GameMode) -> void:
 			ai_players[PieceData.Team.BLUE] = ai_blue
 	for team: int in ai_players:
 		ai_players[team].reset()
-	GameManager.start_game(mode)
+
+
+func _on_options_confirmed(first_team: PieceData.Team) -> void:
+	GameManager.start_game(_pending_mode, first_team)
 
 
 func _on_phase_changed(phase: GameManager.GamePhase) -> void:

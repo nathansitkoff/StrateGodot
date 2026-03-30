@@ -1,4 +1,4 @@
-[gd_scene load_steps=10 format=3 uid="uid://main001"]
+[gd_scene load_steps=11 format=3 uid="uid://main001"]
 
 [ext_resource type="Script" path="res://scripts/ui/main_scene.gd" id="1"]
 [ext_resource type="PackedScene" path="res://scenes/Board.tscn" id="2"]
@@ -9,6 +9,7 @@
 [ext_resource type="PackedScene" path="res://scenes/HUD.tscn" id="7"]
 [ext_resource type="PackedScene" path="res://scenes/LeftHUD.tscn" id="8"]
 [ext_resource type="PackedScene" path="res://scenes/HeadlessTest.tscn" id="9"]
+[ext_resource type="PackedScene" path="res://scenes/GameOptions.tscn" id="10"]
 
 [node name="Main" type="Control"]
 layout_mode = 3
@@ -61,6 +62,11 @@ layout_mode = 1
 visible = false
 
 [node name="GameOver" parent="." instance=ExtResource("5")]
+unique_name_in_owner = true
+layout_mode = 1
+visible = false
+
+[node name="GameOptions" parent="." instance=ExtResource("10")]
 unique_name_in_owner = true
 layout_mode = 1
 visible = false

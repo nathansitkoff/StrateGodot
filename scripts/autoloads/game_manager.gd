@@ -29,14 +29,16 @@ var winner: PieceData.Team = PieceData.Team.RED
 var last_move_from: Vector2i = Vector2i(-1, -1)
 var last_move_to: Vector2i = Vector2i(-1, -1)
 var last_move_team: PieceData.Team = PieceData.Team.RED
+var first_team: PieceData.Team = PieceData.Team.RED
 var captured_pieces: Dictionary = {
 	PieceData.Team.RED: [] as Array[PieceData.Rank],
 	PieceData.Team.BLUE: [] as Array[PieceData.Rank],
 }
 
 
-func start_game(mode: GameMode) -> void:
+func start_game(mode: GameMode, starting_team: PieceData.Team = PieceData.Team.RED) -> void:
 	game_mode = mode
+	first_team = starting_team
 	board_state.reset()
 	captured_pieces[PieceData.Team.RED].clear()
 	captured_pieces[PieceData.Team.BLUE].clear()
@@ -54,7 +56,7 @@ func finish_setup(team: PieceData.Team) -> void:
 		if game_mode == GameMode.AI_TEST:
 			_register_unplaced_as_captured(PieceData.Team.RED)
 			_register_unplaced_as_captured(PieceData.Team.BLUE)
-		current_team = PieceData.Team.RED
+		current_team = first_team
 		_set_phase(GamePhase.PLAY)
 		turn_changed.emit(current_team)
 
@@ -171,7 +173,7 @@ func _end_game(winning_team: PieceData.Team) -> void:
 
 # Run a complete game headlessly. Returns the winning team.
 # Uses separate board state to avoid disturbing the main state.
-func run_headless_game(ai_red: AIPlayer, ai_blue: AIPlayer) -> PieceData.Team:
+func run_headless_game(ai_red: AIPlayer, ai_blue: AIPlayer, starting_team: PieceData.Team = PieceData.Team.RED) -> PieceData.Team:
 	var bs: BoardState = BoardState.new()
 	var caps: Dictionary = {
 		PieceData.Team.RED: [] as Array[PieceData.Rank],
@@ -201,7 +203,7 @@ func run_headless_game(ai_red: AIPlayer, ai_blue: AIPlayer) -> PieceData.Team:
 	ai_red.generate_setup(bs)
 	ai_blue.generate_setup(bs)
 
-	current_team = PieceData.Team.RED
+	current_team = starting_team
 	current_phase = GamePhase.PLAY
 
 	# Play up to 2000 turns to prevent infinite games
