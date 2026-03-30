@@ -1,6 +1,5 @@
 extends PanelContainer
 
-@onready var turn_label: Label = %TurnLabel
 @onready var enemy_remaining_label: Label = %EnemyRemainingLabel
 @onready var enemy_remaining_list: Label = %EnemyRemainingList
 @onready var combat_container: VBoxContainer = %CombatContainer
@@ -14,13 +13,6 @@ func _ready() -> void:
 	combat_container.visible = false
 
 
-func update_turn(team: PieceData.Team) -> void:
-	var team_name: String = "RED" if team == PieceData.Team.RED else "BLUE"
-	var color: Color = Color(0.9, 0.3, 0.3) if team == PieceData.Team.RED else Color(0.3, 0.4, 0.9)
-	turn_label.text = "%s's Turn" % team_name
-	turn_label.add_theme_color_override("font_color", color)
-
-
 func update_enemy_remaining(viewing_team: PieceData.Team) -> void:
 	var enemy_team: PieceData.Team
 	if viewing_team == PieceData.Team.RED:
@@ -31,7 +23,6 @@ func update_enemy_remaining(viewing_team: PieceData.Team) -> void:
 	var enemy_name: String = "RED" if enemy_team == PieceData.Team.RED else "BLUE"
 	enemy_remaining_label.text = "%s Remaining:" % enemy_name
 
-	# Start with full counts, subtract captured
 	var lost: Array = GameManager.captured_pieces[enemy_team]
 	var lost_counts: Dictionary = {}
 	for rank: int in lost:
@@ -40,7 +31,6 @@ func update_enemy_remaining(viewing_team: PieceData.Team) -> void:
 		lost_counts[rank] += 1
 
 	var lines: Array[String] = []
-	# Sort ranks descending (highest first)
 	var ranks: Array = PieceData.RANK_INFO.keys()
 	ranks.sort()
 	ranks.reverse()
@@ -77,7 +67,6 @@ func show_combat_result(atk_rank: PieceData.Rank, def_rank: PieceData.Rank, atk_
 
 	var new_text: String = "%s (%s) vs %s (%s)\n%s" % [atk_name, atk_display, def_name, def_display, result_text]
 
-	# Shift current to previous
 	combat_label_2.text = _last_combat_text
 	combat_label_2.visible = _last_combat_text != ""
 	combat_label_1.text = new_text

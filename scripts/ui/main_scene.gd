@@ -5,6 +5,8 @@ extends Control
 @onready var turn_switch: ColorRect = %TurnSwitch
 @onready var hud: PanelContainer = %HUD
 @onready var left_hud: PanelContainer = %LeftHUD
+@onready var turn_bar: PanelContainer = %TurnBar
+@onready var turn_label: Label = %TurnLabel
 @onready var game_over: ColorRect = %GameOver
 @onready var main_menu: ColorRect = %MainMenu
 
@@ -67,6 +69,8 @@ func _on_phase_changed(phase: GameManager.GamePhase) -> void:
 		GameManager.GamePhase.SETUP_RED:
 			hud.visible = false
 			left_hud.visible = false
+			turn_bar.visible = false
+			board.offset_top = 0
 			board.offset_left = 0
 			if is_ai_vs_ai:
 				ai_players[PieceData.Team.RED].generate_setup(GameManager.board_state)
@@ -86,8 +90,10 @@ func _on_phase_changed(phase: GameManager.GamePhase) -> void:
 		GameManager.GamePhase.PLAY:
 			setup_phase.visible = false
 			hud.visible = true
+			turn_bar.visible = true
+			board.offset_top = 36
 			hud.clear_combat()
-			hud.update_turn(GameManager.current_team)
+			_update_turn_bar(GameManager.current_team)
 			if _uses_dual_sidebars():
 				left_hud.visible = true
 				board.offset_left = 220
@@ -114,7 +120,7 @@ func _on_ai_place_requested(team: PieceData.Team) -> void:
 
 func _on_turn_changed(team: PieceData.Team) -> void:
 	board.clear_selection()
-	hud.update_turn(team)
+	_update_turn_bar(team)
 
 	if _uses_dual_sidebars():
 		left_hud.update_remaining(PieceData.Team.RED)
@@ -167,8 +173,17 @@ func _on_turn_switch_acknowledged() -> void:
 func _on_play_again() -> void:
 	hud.visible = false
 	left_hud.visible = false
+	turn_bar.visible = false
 	board.offset_left = 0
+	board.offset_top = 0
 	main_menu.visible = true
+
+
+func _update_turn_bar(team: PieceData.Team) -> void:
+	var team_name: String = "RED" if team == PieceData.Team.RED else "BLUE"
+	var color: Color = Color(0.9, 0.3, 0.3) if team == PieceData.Team.RED else Color(0.3, 0.4, 0.9)
+	turn_label.text = "%s's Turn" % team_name
+	turn_label.add_theme_color_override("font_color", color)
 
 
 func _get_viewing_team() -> PieceData.Team:
