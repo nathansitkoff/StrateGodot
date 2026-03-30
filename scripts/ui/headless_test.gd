@@ -84,12 +84,10 @@ func _run_batch() -> void:
 
 		var starting: PieceData.Team = PieceData.Team.RED if _games_played % 2 == 0 else PieceData.Team.BLUE
 		var result: Dictionary = GameManager.run_headless_game(ai_red, ai_blue, starting)
-		var winner: PieceData.Team = result["winner"]
 		var reason: String = result["reason"]
 		var turns: int = result["turns"]
 
 		_total_turns += turns
-		var winner_int: int = result["winner"]
 
 		if reason == "timeout":
 			_draws += 1
@@ -97,7 +95,7 @@ func _run_batch() -> void:
 			_games_played += 1
 			continue
 
-		var winner: PieceData.Team = winner_int as PieceData.Team
+		var winner: PieceData.Team = result["winner"] as PieceData.Team
 		var winner_key: String = "red" if winner == PieceData.Team.RED else "blue"
 
 		if winner == PieceData.Team.RED:
