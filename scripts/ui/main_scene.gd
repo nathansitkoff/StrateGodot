@@ -127,10 +127,10 @@ func _on_turn_changed(team: PieceData.Team) -> void:
 	_update_turn_bar(team)
 	_update_remaining()
 
-	# Notify AI players of enemy piece movement
+	# Notify AI players of enemy piece movement (only if mover survived)
 	if GameManager.last_move_to != Vector2i(-1, -1):
 		var moved_id: int = GameManager.board_state.get_piece_at(GameManager.last_move_to)
-		if moved_id != -1:
+		if moved_id != -1 and GameManager.board_state.pieces[moved_id]["team"] == GameManager.last_move_team:
 			for ai_team: int in ai_players:
 				if ai_team != GameManager.last_move_team:
 					ai_players[ai_team].notify_move(moved_id, GameManager.last_move_team)
