@@ -91,7 +91,7 @@ func _get_viewing_team() -> PieceData.Team:
 func _draw_pieces() -> void:
 	var viewing_team: PieceData.Team = _get_viewing_team()
 	var board: BoardState = GameManager.board_state
-	var see_all: bool = GameManager.game_mode == GameManager.GameMode.AI_TEST
+	var see_all: bool = GameManager.game_mode == GameManager.GameMode.AI_TEST or GameManager.game_mode == GameManager.GameMode.AI_VS_AI
 
 	for piece_id: int in board.pieces:
 		var piece: Dictionary = board.pieces[piece_id]

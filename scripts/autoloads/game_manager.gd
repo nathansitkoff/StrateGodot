@@ -12,6 +12,7 @@ enum GameMode {
 	LOCAL_2P,
 	VS_AI,
 	AI_TEST,
+	AI_VS_AI,
 }
 
 signal phase_changed(phase: GamePhase)

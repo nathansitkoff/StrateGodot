@@ -5,6 +5,7 @@ signal mode_selected(mode: GameManager.GameMode)
 @onready var local_button: Button = %LocalButton
 @onready var ai_button: Button = %AIButton
 @onready var ai_test_button: Button = %AITestButton
+@onready var ai_vs_ai_button: Button = %AIvsAIButton
 
 
 func _ready() -> void:
@@ -19,4 +20,8 @@ func _ready() -> void:
 	ai_test_button.pressed.connect(func() -> void:
 		visible = false
 		mode_selected.emit(GameManager.GameMode.AI_TEST)
+	)
+	ai_vs_ai_button.pressed.connect(func() -> void:
+		visible = false
+		mode_selected.emit(GameManager.GameMode.AI_VS_AI)
 	)

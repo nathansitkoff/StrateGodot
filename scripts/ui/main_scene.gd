@@ -4,11 +4,13 @@ extends Control
 @onready var setup_phase: Control = %SetupPhase
 @onready var turn_switch: ColorRect = %TurnSwitch
 @onready var hud: PanelContainer = %HUD
+@onready var left_hud: PanelContainer = %LeftHUD
 @onready var game_over: ColorRect = %GameOver
 @onready var main_menu: ColorRect = %MainMenu
 
 var play_controller: Node
-var ai_player: AIPlayer
+# AI players keyed by team — null entries mean human-controlled
+var ai_players: Dictionary = {}
 
 const AI_MOVE_DELAY: float = 0.5
 
@@ -31,30 +33,53 @@ func _ready() -> void:
 
 
 func _on_mode_selected(mode: GameManager.GameMode) -> void:
-	if mode == GameManager.GameMode.VS_AI or mode == GameManager.GameMode.AI_TEST:
-		ai_player = AIPlayer.new()
-		ai_player.team = PieceData.Team.BLUE
-	else:
-		ai_player = null
-	if ai_player != null:
-		ai_player.reset()
+	ai_players.clear()
+	match mode:
+		GameManager.GameMode.VS_AI:
+			var ai_blue: AIPlayer = AIPlayer.new()
+			ai_blue.team = PieceData.Team.BLUE
+			ai_players[PieceData.Team.BLUE] = ai_blue
+		GameManager.GameMode.AI_TEST:
+			var ai_blue: AIPlayer = AIPlayer.new()
+			ai_blue.team = PieceData.Team.BLUE
+			ai_players[PieceData.Team.BLUE] = ai_blue
+		GameManager.GameMode.AI_VS_AI:
+			var ai_red: AIPlayer = AIPlayer.new()
+			ai_red.team = PieceData.Team.RED
+			var ai_blue: AIPlayer = AIPlayer.new()
+			ai_blue.team = PieceData.Team.BLUE
+			ai_players[PieceData.Team.RED] = ai_red
+			ai_players[PieceData.Team.BLUE] = ai_blue
+	for team: int in ai_players:
+		ai_players[team].reset()
 	GameManager.start_game(mode)
+
+
+func _uses_dual_sidebars() -> bool:
+	return GameManager.game_mode == GameManager.GameMode.AI_TEST or GameManager.game_mode == GameManager.GameMode.AI_VS_AI
 
 
 func _on_phase_changed(phase: GameManager.GamePhase) -> void:
 	var is_test: bool = GameManager.game_mode == GameManager.GameMode.AI_TEST
+	var is_ai_vs_ai: bool = GameManager.game_mode == GameManager.GameMode.AI_VS_AI
 
 	match phase:
 		GameManager.GamePhase.SETUP_RED:
 			hud.visible = false
-			setup_phase.start_setup(PieceData.Team.RED, is_test)
+			left_hud.visible = false
+			board.offset_left = 0
+			if is_ai_vs_ai:
+				ai_players[PieceData.Team.RED].generate_setup(GameManager.board_state)
+				board.refresh()
+				GameManager.finish_setup(PieceData.Team.RED)
+			else:
+				setup_phase.start_setup(PieceData.Team.RED, is_test)
 		GameManager.GamePhase.SETUP_BLUE:
 			if _is_ai_team(PieceData.Team.BLUE) and not is_test:
-				ai_player.generate_setup(GameManager.board_state)
+				ai_players[PieceData.Team.BLUE].generate_setup(GameManager.board_state)
 				board.refresh()
 				GameManager.finish_setup(PieceData.Team.BLUE)
 			elif is_test:
-				# In test mode, human places blue pieces too
 				setup_phase.start_setup(PieceData.Team.BLUE, true)
 			else:
 				turn_switch.show_turn(PieceData.Team.BLUE)
@@ -63,7 +88,15 @@ func _on_phase_changed(phase: GameManager.GamePhase) -> void:
 			hud.visible = true
 			hud.clear_combat()
 			hud.update_turn(GameManager.current_team)
-			hud.update_enemy_remaining(_get_viewing_team())
+			if _uses_dual_sidebars():
+				left_hud.visible = true
+				board.offset_left = 220
+				left_hud.update_remaining(PieceData.Team.RED)
+				hud.update_enemy_remaining(PieceData.Team.RED)
+			else:
+				left_hud.visible = false
+				board.offset_left = 0
+				hud.update_enemy_remaining(_get_viewing_team())
 			board.refresh()
 		GameManager.GamePhase.GAME_OVER:
 			pass
@@ -74,28 +107,34 @@ func _on_setup_complete(team: PieceData.Team) -> void:
 
 
 func _on_ai_place_requested(team: PieceData.Team) -> void:
-	if ai_player != null:
-		ai_player.generate_setup(GameManager.board_state)
+	if team in ai_players:
+		ai_players[team].generate_setup(GameManager.board_state)
 		board.refresh()
 
 
 func _on_turn_changed(team: PieceData.Team) -> void:
 	board.clear_selection()
 	hud.update_turn(team)
-	hud.update_enemy_remaining(_get_viewing_team())
 
-	# Notify AI of enemy piece movement
-	if ai_player != null and GameManager.last_move_to != Vector2i(-1, -1):
+	if _uses_dual_sidebars():
+		left_hud.update_remaining(PieceData.Team.RED)
+		hud.update_enemy_remaining(PieceData.Team.RED)
+	else:
+		hud.update_enemy_remaining(_get_viewing_team())
+
+	# Notify AI players of enemy piece movement
+	if GameManager.last_move_to != Vector2i(-1, -1):
 		var moved_id: int = GameManager.board_state.get_piece_at(GameManager.last_move_to)
 		if moved_id != -1:
-			ai_player.notify_move(moved_id, GameManager.last_move_team)
+			for ai_team: int in ai_players:
+				if ai_team != GameManager.last_move_team:
+					ai_players[ai_team].notify_move(moved_id, GameManager.last_move_team)
 
 	if _is_ai_team(team):
 		_schedule_ai_move()
 	elif GameManager.game_mode == GameManager.GameMode.LOCAL_2P:
 		turn_switch.show_turn(team)
 	else:
-		# VS_AI or AI_TEST, player's turn
 		board.refresh()
 
 
@@ -110,7 +149,11 @@ func _on_combat_occurred(combat_info: Dictionary) -> void:
 
 func _on_game_ended(winner: PieceData.Team) -> void:
 	board.refresh()
-	hud.update_enemy_remaining(_get_viewing_team())
+	if _uses_dual_sidebars():
+		left_hud.update_remaining(PieceData.Team.RED)
+		hud.update_enemy_remaining(PieceData.Team.RED)
+	else:
+		hud.update_enemy_remaining(_get_viewing_team())
 	game_over.show_winner(winner)
 
 
@@ -123,17 +166,19 @@ func _on_turn_switch_acknowledged() -> void:
 
 func _on_play_again() -> void:
 	hud.visible = false
+	left_hud.visible = false
+	board.offset_left = 0
 	main_menu.visible = true
 
 
 func _get_viewing_team() -> PieceData.Team:
-	if GameManager.game_mode == GameManager.GameMode.VS_AI or GameManager.game_mode == GameManager.GameMode.AI_TEST:
+	if GameManager.game_mode == GameManager.GameMode.VS_AI or GameManager.game_mode == GameManager.GameMode.AI_TEST or GameManager.game_mode == GameManager.GameMode.AI_VS_AI:
 		return PieceData.Team.RED
 	return GameManager.current_team
 
 
 func _is_ai_team(team: PieceData.Team) -> bool:
-	return ai_player != null and team == ai_player.team
+	return team in ai_players
 
 
 func _schedule_ai_move() -> void:
@@ -147,7 +192,8 @@ func _execute_ai_move() -> void:
 	if not _is_ai_team(GameManager.current_team):
 		return
 
-	var move: Dictionary = ai_player.choose_move(GameManager.board_state)
+	var ai: AIPlayer = ai_players[GameManager.current_team]
+	var move: Dictionary = ai.choose_move(GameManager.board_state)
 	if move.size() > 0:
 		GameManager.execute_move(move["from"], move["to"])
 		board.refresh()

@@ -20,9 +20,9 @@ anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
 offset_left = -150
-offset_top = -100
+offset_top = -160
 offset_right = 150
-offset_bottom = 100
+offset_bottom = 160
 
 [node name="Title" type="Label" parent="VBox"]
 layout_mode = 2
@@ -58,3 +58,13 @@ unique_name_in_owner = true
 layout_mode = 2
 custom_minimum_size = Vector2(0, 50)
 text = "AI Test"
+
+[node name="Spacer4" type="Control" parent="VBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 10)
+
+[node name="AIvsAIButton" type="Button" parent="VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(0, 50)
+text = "AI vs AI"

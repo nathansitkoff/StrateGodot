@@ -137,8 +137,9 @@ func get_team_pieces(team: PieceData.Team) -> Array[int]:
 
 
 func get_setup_rows(team: PieceData.Team) -> Array[int]:
-	# Red places on rows 6-9 (bottom), Blue on rows 0-3 (top)
+	# Returns [back_row, second_row, third_row, front_row]
+	# Back = furthest from enemy, front = closest to enemy
 	if team == PieceData.Team.RED:
-		return [6, 7, 8, 9]
+		return [9, 8, 7, 6]
 	else:
 		return [0, 1, 2, 3]
