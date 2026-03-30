@@ -60,10 +60,6 @@ func _on_mode_selected(mode: GameManager.GameMode) -> void:
 	GameManager.start_game(mode)
 
 
-func _uses_dual_sidebars() -> bool:
-	return GameManager.game_mode == GameManager.GameMode.AI_TEST or GameManager.game_mode == GameManager.GameMode.AI_VS_AI
-
-
 func _on_phase_changed(phase: GameManager.GamePhase) -> void:
 	var is_test: bool = GameManager.game_mode == GameManager.GameMode.AI_TEST
 	var is_ai_vs_ai: bool = GameManager.game_mode == GameManager.GameMode.AI_VS_AI
@@ -89,23 +85,17 @@ func _on_phase_changed(phase: GameManager.GamePhase) -> void:
 			elif is_test:
 				setup_phase.start_setup(PieceData.Team.BLUE, true)
 			else:
-				turn_switch.show_turn(PieceData.Team.BLUE)
+				turn_switch.show_turn(PieceData.Team.BLUE, false)
 		GameManager.GamePhase.PLAY:
 			setup_phase.visible = false
 			hud.visible = true
+			left_hud.visible = true
 			turn_bar.visible = true
 			board.offset_top = 36
+			board.offset_left = 220
 			hud.clear_combat()
 			_update_turn_bar(GameManager.current_team)
-			if _uses_dual_sidebars():
-				left_hud.visible = true
-				board.offset_left = 220
-				left_hud.update_remaining(PieceData.Team.RED)
-				hud.update_enemy_remaining(PieceData.Team.RED)
-			else:
-				left_hud.visible = false
-				board.offset_left = 0
-				hud.update_enemy_remaining(_get_viewing_team())
+			_update_remaining()
 			board.refresh()
 		GameManager.GamePhase.GAME_OVER:
 			pass
@@ -124,12 +114,7 @@ func _on_ai_place_requested(team: PieceData.Team) -> void:
 func _on_turn_changed(team: PieceData.Team) -> void:
 	board.clear_selection()
 	_update_turn_bar(team)
-
-	if _uses_dual_sidebars():
-		left_hud.update_remaining(PieceData.Team.RED)
-		hud.update_enemy_remaining(PieceData.Team.RED)
-	else:
-		hud.update_enemy_remaining(_get_viewing_team())
+	_update_remaining()
 
 	# Notify AI players of enemy piece movement
 	if GameManager.last_move_to != Vector2i(-1, -1):
@@ -142,7 +127,7 @@ func _on_turn_changed(team: PieceData.Team) -> void:
 	if _is_ai_team(team):
 		_schedule_ai_move()
 	elif GameManager.game_mode == GameManager.GameMode.LOCAL_2P:
-		turn_switch.show_turn(team)
+		turn_switch.show_turn(team, true)
 	else:
 		board.refresh()
 
@@ -158,11 +143,7 @@ func _on_combat_occurred(combat_info: Dictionary) -> void:
 
 func _on_game_ended(winner: PieceData.Team) -> void:
 	board.refresh()
-	if _uses_dual_sidebars():
-		left_hud.update_remaining(PieceData.Team.RED)
-		hud.update_enemy_remaining(PieceData.Team.RED)
-	else:
-		hud.update_enemy_remaining(_get_viewing_team())
+	_update_remaining()
 	game_over.show_winner(winner)
 
 
@@ -188,6 +169,11 @@ func _on_headless_selected() -> void:
 
 func _on_headless_back() -> void:
 	main_menu.visible = true
+
+
+func _update_remaining() -> void:
+	left_hud.update_remaining(PieceData.Team.RED)
+	hud.update_enemy_remaining(PieceData.Team.RED)
 
 
 func _update_turn_bar(team: PieceData.Team) -> void:

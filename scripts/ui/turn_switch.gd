@@ -5,9 +5,19 @@ signal acknowledged
 @onready var label: Label = %TurnSwitchLabel
 
 
-func show_turn(team: PieceData.Team) -> void:
+func show_turn(team: PieceData.Team, board_only: bool = false) -> void:
 	var team_name: String = "RED" if team == PieceData.Team.RED else "BLUE"
 	label.text = "Player %s's Turn\n\nClick to Continue" % team_name
+	if board_only:
+		offset_left = 220
+		offset_top = 36
+		offset_right = -220
+		offset_bottom = 0
+	else:
+		offset_left = 0
+		offset_top = 0
+		offset_right = 0
+		offset_bottom = 0
 	visible = true
 
 
