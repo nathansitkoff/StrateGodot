@@ -8,6 +8,7 @@ extends Control
 @onready var turn_bar: PanelContainer = %TurnBar
 @onready var turn_label: Label = %TurnLabel
 @onready var game_over: ColorRect = %GameOver
+@onready var headless_test: ColorRect = %HeadlessTest
 @onready var main_menu: ColorRect = %MainMenu
 
 var play_controller: Node
@@ -27,6 +28,8 @@ func _ready() -> void:
 	turn_switch.acknowledged.connect(_on_turn_switch_acknowledged)
 	game_over.play_again_pressed.connect(_on_play_again)
 	main_menu.mode_selected.connect(_on_mode_selected)
+	main_menu.headless_selected.connect(_on_headless_selected)
+	headless_test.back_pressed.connect(_on_headless_back)
 
 	play_controller = Node.new()
 	play_controller.set_script(preload("res://scripts/ui/play_controller.gd"))
@@ -176,6 +179,14 @@ func _on_play_again() -> void:
 	turn_bar.visible = false
 	board.offset_left = 0
 	board.offset_top = 0
+	main_menu.visible = true
+
+
+func _on_headless_selected() -> void:
+	headless_test.visible = true
+
+
+func _on_headless_back() -> void:
 	main_menu.visible = true
 
 

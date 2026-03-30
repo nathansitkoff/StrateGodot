@@ -1,0 +1,108 @@
+[gd_scene format=3 uid="uid://htest01"]
+
+[ext_resource type="Script" path="res://scripts/ui/headless_test.gd" id="1"]
+
+[node name="HeadlessTest" type="ColorRect"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.15, 0.15, 0.2, 1)
+script = ExtResource("1")
+
+[node name="VBox" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -200
+offset_top = -180
+offset_right = 200
+offset_bottom = 180
+
+[node name="Title" type="Label" parent="VBox"]
+layout_mode = 2
+text = "AI vs AI Headless Test"
+horizontal_alignment = 1
+
+[node name="Sep1" type="HSeparator" parent="VBox"]
+layout_mode = 2
+
+[node name="CountRow" type="HBoxContainer" parent="VBox"]
+layout_mode = 2
+
+[node name="CountLabel" type="Label" parent="VBox/CountRow"]
+layout_mode = 2
+text = "Games to play:"
+size_flags_horizontal = 3
+
+[node name="GameCountInput" type="SpinBox" parent="VBox/CountRow"]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = 1
+max_value = 10000
+value = 100
+step = 1
+
+[node name="Spacer1" type="Control" parent="VBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 10)
+
+[node name="StartButton" type="Button" parent="VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(0, 40)
+text = "Start Test"
+
+[node name="Spacer2" type="Control" parent="VBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 20)
+
+[node name="ProgressLabel" type="Label" parent="VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_alignment = 1
+
+[node name="Sep2" type="HSeparator" parent="VBox"]
+layout_mode = 2
+
+[node name="RedWinsLabel" type="Label" parent="VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Red Wins: 0"
+horizontal_alignment = 1
+
+[node name="BlueWinsLabel" type="Label" parent="VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Blue Wins: 0"
+horizontal_alignment = 1
+
+[node name="DrawsLabel" type="Label" parent="VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Draws: 0"
+horizontal_alignment = 1
+
+[node name="Spacer3" type="Control" parent="VBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 10)
+
+[node name="StatusLabel" type="Label" parent="VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_alignment = 1
+
+[node name="Spacer4" type="Control" parent="VBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 10)
+
+[node name="BackButton" type="Button" parent="VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(0, 40)
+text = "Back to Menu"
