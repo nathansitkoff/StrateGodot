@@ -50,7 +50,7 @@ func update_enemy_remaining(viewing_team: PieceData.Team) -> void:
 	enemy_remaining_list.text = "\n".join(lines)
 
 
-func show_combat_result(atk_rank: PieceData.Rank, def_rank: PieceData.Rank, atk_team: PieceData.Team, result: Combat.Result) -> void:
+func show_combat_result(atk_rank: PieceData.Rank, def_rank: PieceData.Rank, _atk_team: PieceData.Team, result: Combat.Result) -> void:
 	var atk_name: String = PieceData.get_rank_name(atk_rank)
 	var atk_display: String = PieceData.get_rank_display(atk_rank)
 	var def_name: String = PieceData.get_rank_name(def_rank)

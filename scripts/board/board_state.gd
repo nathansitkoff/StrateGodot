@@ -102,6 +102,12 @@ func get_valid_moves(piece_id: int) -> Array[Vector2i]:
 		Vector2i(0, -1), Vector2i(0, 1),
 		Vector2i(-1, 0), Vector2i(1, 0),
 	]
+	# Check forward direction first based on team
+	if team == PieceData.Team.BLUE:
+		directions = [
+			Vector2i(0, 1), Vector2i(0, -1),
+			Vector2i(-1, 0), Vector2i(1, 0),
+		]
 
 	for dir: Vector2i in directions:
 		for dist: int in range(1, move_range + 1):

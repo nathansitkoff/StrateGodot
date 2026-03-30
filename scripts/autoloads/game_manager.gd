@@ -165,15 +165,32 @@ func _set_phase(phase: GamePhase) -> void:
 	phase_changed.emit(phase)
 
 
+func _random_setup(bs: BoardState, team: PieceData.Team) -> void:
+	var rows: Array[int] = bs.get_setup_rows(team)
+	var cells: Array[Vector2i] = []
+	for col: int in range(BoardState.BOARD_SIZE):
+		for row: int in rows:
+			var pos: Vector2i = Vector2i(col, row)
+			if bs.is_valid_cell(pos):
+				cells.append(pos)
+	cells.shuffle()
+	var idx: int = 0
+	for rank: int in PieceData.RANK_INFO:
+		var count: int = PieceData.RANK_INFO[rank]["count"]
+		for i: int in range(count):
+			if idx < cells.size():
+				bs.add_piece(rank, team, cells[idx])
+				idx += 1
+
+
 func _end_game(winning_team: PieceData.Team) -> void:
 	winner = winning_team
 	_set_phase(GamePhase.GAME_OVER)
 	game_ended.emit(winner)
 
 
-# Run a complete game headlessly. Returns the winning team.
-# Uses separate board state to avoid disturbing the main state.
-func run_headless_game(ai_red: AIPlayer, ai_blue: AIPlayer, starting_team: PieceData.Team = PieceData.Team.RED) -> PieceData.Team:
+# Run a complete game headlessly. Returns a result dictionary.
+func run_headless_game(ai_red: AIPlayer, ai_blue: AIPlayer, starting_team: PieceData.Team = PieceData.Team.RED) -> Dictionary:
 	var bs: BoardState = BoardState.new()
 	var caps: Dictionary = {
 		PieceData.Team.RED: [] as Array[PieceData.Rank],
@@ -199,22 +216,26 @@ func run_headless_game(ai_red: AIPlayer, ai_blue: AIPlayer, starting_team: Piece
 	ai_red.reset()
 	ai_blue.reset()
 
-	# Setup
-	ai_red.generate_setup(bs)
-	ai_blue.generate_setup(bs)
+	# Use random placement for both sides
+	_random_setup(bs, PieceData.Team.RED)
+	_random_setup(bs, PieceData.Team.BLUE)
 
 	current_team = starting_team
 	current_phase = GamePhase.PLAY
 
 	# Play up to 2000 turns to prevent infinite games
 	var result_winner: PieceData.Team = PieceData.Team.RED
+	var result_reason: String = "timeout"
+	var turn_count: int = 0
 	var game_over_flag: bool = false
 	for turn: int in range(2000):
+		turn_count = turn
 		var ai: AIPlayer = ai_red if current_team == PieceData.Team.RED else ai_blue
 		var move: Dictionary = ai.choose_move(bs)
 		if move.size() == 0:
 			# Current player can't move, opponent wins
 			result_winner = PieceData.Team.BLUE if current_team == PieceData.Team.RED else PieceData.Team.RED
+			result_reason = "no_moves"
 			game_over_flag = true
 			break
 
@@ -264,12 +285,13 @@ func run_headless_game(ai_red: AIPlayer, ai_blue: AIPlayer, starting_team: Piece
 
 			if def_rank == PieceData.Rank.FLAG:
 				result_winner = atk_team
+				result_reason = "flag_captured"
 				game_over_flag = true
 				break
 
-		# Notify opponent AI of the move
+		# Notify opponent AI of the move (only if mover survived)
 		var moved_piece_id: int = bs.get_piece_at(to)
-		if moved_piece_id != -1:
+		if moved_piece_id != -1 and bs.pieces[moved_piece_id]["team"] == current_team:
 			if current_team == PieceData.Team.RED:
 				ai_blue.notify_move(moved_piece_id, PieceData.Team.RED)
 			else:
@@ -279,13 +301,14 @@ func run_headless_game(ai_red: AIPlayer, ai_blue: AIPlayer, starting_team: Piece
 		var next: PieceData.Team = PieceData.Team.BLUE if current_team == PieceData.Team.RED else PieceData.Team.RED
 		if not bs.has_movable_pieces(next):
 			result_winner = current_team
+			result_reason = "opponent_stuck"
 			game_over_flag = true
 			break
 		current_team = next
 
 	if not game_over_flag:
-		# Draw after 2000 turns — call it a red win by default
 		result_winner = PieceData.Team.RED
+		result_reason = "timeout"
 
 	# Restore original state
 	board_state = old_bs
@@ -297,4 +320,8 @@ func run_headless_game(ai_red: AIPlayer, ai_blue: AIPlayer, starting_team: Piece
 	last_move_to = old_to
 	last_move_team = old_move_team
 
-	return result_winner
+	return {
+		"winner": result_winner,
+		"reason": result_reason,
+		"turns": turn_count,
+	}

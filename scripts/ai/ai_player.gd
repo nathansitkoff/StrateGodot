@@ -232,35 +232,43 @@ func generate_setup(board_state: BoardState) -> void:
 
 func choose_move(board_state: BoardState) -> Dictionary:
 	var my_pieces: Array[int] = board_state.get_team_pieces(team)
+	# Shuffle to avoid bias from iteration order
+	var shuffled_pieces: Array[int] = my_pieces.duplicate()
+	shuffled_pieces.shuffle()
 	var enemy_team: PieceData.Team = _get_enemy_team()
 
 	# 1. Capture known flag
-	var flag_move: Dictionary = _find_flag_capture(board_state, my_pieces)
+	var flag_move: Dictionary = _find_flag_capture(board_state, shuffled_pieces)
 	if flag_move.size() > 0:
 		return flag_move
 
 	# 2. Win attacks (revealed or guaranteed against unrevealed)
-	var winning_attack: Dictionary = _find_winning_attack(board_state, my_pieces, enemy_team)
+	var winning_attack: Dictionary = _find_winning_attack(board_state, shuffled_pieces, enemy_team)
 	if winning_attack.size() > 0:
 		return winning_attack
 
 	# 3. Retreat revealed pieces from danger
-	var retreat: Dictionary = _find_retreat(board_state, my_pieces, enemy_team)
+	var retreat: Dictionary = _find_retreat(board_state, shuffled_pieces, enemy_team)
 	if retreat.size() > 0:
 		return retreat
 
 	# 4. Probe with scouts
-	var probe: Dictionary = _find_scout_probe(board_state, my_pieces, enemy_team)
+	var probe: Dictionary = _find_scout_probe(board_state, shuffled_pieces, enemy_team)
 	if probe.size() > 0:
 		return probe
 
 	# 5. Advance forward
-	var advance: Dictionary = _find_advance(board_state, my_pieces)
+	var advance: Dictionary = _find_advance(board_state, shuffled_pieces)
 	if advance.size() > 0:
 		return advance
 
-	# 6. Random fallback
-	return _find_random_move(board_state, my_pieces)
+	# 6. Random fallback (avoids known losses)
+	var random: Dictionary = _find_random_move(board_state, shuffled_pieces)
+	if random.size() > 0:
+		return random
+
+	# 7. Desperate fallback — any valid move, even bad ones
+	return _find_any_move(board_state, shuffled_pieces)
 
 
 func _find_flag_capture(board_state: BoardState, my_pieces: Array[int]) -> Dictionary:
@@ -278,7 +286,7 @@ func _find_flag_capture(board_state: BoardState, my_pieces: Array[int]) -> Dicti
 	return {}
 
 
-func _find_winning_attack(board_state: BoardState, my_pieces: Array[int], enemy_team: PieceData.Team) -> Dictionary:
+func _find_winning_attack(board_state: BoardState, my_pieces: Array[int], _enemy_team: PieceData.Team) -> Dictionary:
 	var best_move: Dictionary = {}
 	var best_value: int = -1
 
@@ -424,6 +432,22 @@ func _find_random_move(board_state: BoardState, my_pieces: Array[int]) -> Dictio
 						continue
 				elif _is_guaranteed_loss(piece["rank"], target_id, board_state):
 					continue
+			all_moves.append({ "from": piece["pos"], "to": target_pos })
+
+	if all_moves.size() > 0:
+		return all_moves[_rng.randi_range(0, all_moves.size() - 1)]
+
+	return {}
+
+
+func _find_any_move(board_state: BoardState, my_pieces: Array[int]) -> Dictionary:
+	var all_moves: Array[Dictionary] = []
+	for piece_id: int in my_pieces:
+		var piece: Dictionary = board_state.pieces[piece_id]
+		if not PieceData.can_move(piece["rank"]):
+			continue
+		var moves: Array[Vector2i] = board_state.get_valid_moves(piece_id)
+		for target_pos: Vector2i in moves:
 			all_moves.append({ "from": piece["pos"], "to": target_pos })
 
 	if all_moves.size() > 0:
