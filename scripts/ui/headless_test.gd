@@ -89,6 +89,15 @@ func _run_batch() -> void:
 		var turns: int = result["turns"]
 
 		_total_turns += turns
+		var winner_int: int = result["winner"]
+
+		if reason == "timeout":
+			_draws += 1
+			_timeouts += 1
+			_games_played += 1
+			continue
+
+		var winner: PieceData.Team = winner_int as PieceData.Team
 		var winner_key: String = "red" if winner == PieceData.Team.RED else "blue"
 
 		if winner == PieceData.Team.RED:
@@ -103,8 +112,6 @@ func _run_batch() -> void:
 				_no_moves[winner_key] += 1
 			"opponent_stuck":
 				_opponent_stuck[winner_key] += 1
-			"timeout":
-				_timeouts += 1
 
 		if winner == starting:
 			_first_mover_wins += 1

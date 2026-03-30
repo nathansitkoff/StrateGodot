@@ -307,7 +307,7 @@ func run_headless_game(ai_red: AIPlayer, ai_blue: AIPlayer, starting_team: Piece
 		current_team = next
 
 	if not game_over_flag:
-		result_winner = PieceData.Team.RED
+		result_winner = -1
 		result_reason = "timeout"
 
 	# Restore original state
