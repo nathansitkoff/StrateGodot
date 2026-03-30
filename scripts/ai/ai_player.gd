@@ -87,6 +87,18 @@ func _is_guaranteed_win(our_rank: PieceData.Rank, enemy_piece_id: int, board_sta
 	return true
 
 
+# Returns true if our piece is guaranteed to lose against an unrevealed enemy.
+func _is_guaranteed_loss(our_rank: PieceData.Rank, enemy_piece_id: int, board_state: BoardState) -> bool:
+	var possible: Array[int] = _get_possible_ranks(enemy_piece_id, board_state)
+	if possible.size() == 0:
+		return false
+	for rank: int in possible:
+		var result: Combat.Result = Combat.resolve(our_rank, rank)
+		if result == Combat.Result.ATTACKER_WINS:
+			return false
+	return true
+
+
 func generate_setup(board_state: BoardState) -> void:
 	var valid_rows: Array[int] = board_state.get_setup_rows(team)
 	var back_row: int = valid_rows[0]
@@ -359,7 +371,8 @@ func _find_scout_probe(board_state: BoardState, my_pieces: Array[int], enemy_tea
 			if target_id != -1:
 				var target: Dictionary = board_state.pieces[target_id]
 				if target["team"] == enemy_team and not target["revealed"]:
-					candidates.append({ "from": piece["pos"], "to": target_pos, "priority": 2 })
+					if not _is_guaranteed_loss(piece["rank"], target_id, board_state):
+						candidates.append({ "from": piece["pos"], "to": target_pos, "priority": 2 })
 			elif (target_pos.y - piece["pos"].y) * forward_dir > 0:
 				candidates.append({ "from": piece["pos"], "to": target_pos, "priority": 1 })
 
@@ -401,6 +414,16 @@ func _find_random_move(board_state: BoardState, my_pieces: Array[int]) -> Dictio
 			continue
 		var moves: Array[Vector2i] = board_state.get_valid_moves(piece_id)
 		for target_pos: Vector2i in moves:
+			# Skip known or deduced losing attacks
+			var target_id: int = board_state.get_piece_at(target_pos)
+			if target_id != -1:
+				var target: Dictionary = board_state.pieces[target_id]
+				if target["revealed"]:
+					var result: Combat.Result = Combat.resolve(piece["rank"], target["rank"])
+					if result != Combat.Result.ATTACKER_WINS:
+						continue
+				elif _is_guaranteed_loss(piece["rank"], target_id, board_state):
+					continue
 			all_moves.append({ "from": piece["pos"], "to": target_pos })
 
 	if all_moves.size() > 0:
