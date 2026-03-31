@@ -143,17 +143,14 @@ func _evaluate_opponent_response(world: BoardState, caps: Dictionary) -> float:
 	return worst_for_us
 
 
-func _score_position(bs: BoardState, caps: Dictionary) -> float:
+func _score_position(bs: BoardState, _caps: Dictionary) -> float:
 	var my_material: float = 0.0
 	var enemy_material: float = 0.0
-	var enemy: PieceData.Team = _get_enemy_team()
 	var my_flag_pos: Vector2i = Vector2i(-1, -1)
-	var enemy_flag_pos: Vector2i = Vector2i(-1, -1)
 	var my_miner_count: int = 0
 	var enemy_miner_count: int = 0
 	var enemy_bomb_count: int = 0
 	var my_back_row: int = 9 if team == PieceData.Team.RED else 0
-	var forward_dir: int = -1 if team == PieceData.Team.RED else 1
 
 	for piece_id: int in bs.pieces:
 		var piece: Dictionary = bs.pieces[piece_id]
@@ -172,8 +169,6 @@ func _score_position(bs: BoardState, caps: Dictionary) -> float:
 				my_material += dist_from_back * 0.1
 		else:
 			enemy_material += value
-			if rank == PieceData.Rank.FLAG:
-				enemy_flag_pos = piece["pos"]
 			if rank == PieceData.Rank.MINER:
 				enemy_miner_count += 1
 			if rank == PieceData.Rank.BOMB:

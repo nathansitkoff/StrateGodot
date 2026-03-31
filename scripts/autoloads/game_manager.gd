@@ -78,7 +78,7 @@ func _register_unplaced_as_captured(team_to_check: PieceData.Team) -> void:
 # Apply a move on a given board state and captured pieces dict.
 # Returns a result dict: { "combat": bool, "combat_info": Dictionary, "flag_captured": bool, "winner": Team }
 # This is the single source of truth for move/combat logic.
-static func apply_move(from: Vector2i, to: Vector2i, bs: BoardState, caps: Dictionary) -> Dictionary:
+func apply_move(from: Vector2i, to: Vector2i, bs: BoardState, caps: Dictionary) -> Dictionary:
 	var piece_id: int = bs.get_piece_at(from)
 	var result: Dictionary = { "combat": false, "flag_captured": false }
 
