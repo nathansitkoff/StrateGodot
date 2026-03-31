@@ -58,6 +58,37 @@ size_flags_horizontal = 3
 custom_minimum_size = Vector2(0, 40)
 text = "Blue First"
 
+[node name="Sep2" type="HSeparator" parent="VBox"]
+layout_mode = 2
+
+[node name="RedAIRow" type="HBoxContainer" parent="VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+visible = false
+
+[node name="RedAILabel" type="Label" parent="VBox/RedAIRow"]
+layout_mode = 2
+text = "Red AI:"
+size_flags_horizontal = 3
+
+[node name="OptRedAISelect" type="OptionButton" parent="VBox/RedAIRow"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="BlueAIRow" type="HBoxContainer" parent="VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+visible = false
+
+[node name="BlueAILabel" type="Label" parent="VBox/BlueAIRow"]
+layout_mode = 2
+text = "Blue AI:"
+size_flags_horizontal = 3
+
+[node name="OptBlueAISelect" type="OptionButton" parent="VBox/BlueAIRow"]
+unique_name_in_owner = true
+layout_mode = 2
+
 [node name="Spacer2" type="Control" parent="VBox"]
 layout_mode = 2
 custom_minimum_size = Vector2(0, 20)
