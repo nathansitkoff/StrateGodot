@@ -77,10 +77,8 @@ func _run_batch() -> void:
 		if _games_played >= _games_total:
 			break
 
-		var ai_red: AIPlayer = AIPlayer.new()
-		ai_red.team = PieceData.Team.RED
-		var ai_blue: AIPlayer = AIPlayer.new()
-		ai_blue.team = PieceData.Team.BLUE
+		var ai_red: HeuristicAI = HeuristicAI.new(PieceData.Team.RED)
+		var ai_blue: HeuristicAI = HeuristicAI.new(PieceData.Team.BLUE)
 
 		var starting: PieceData.Team = PieceData.Team.RED if _games_played % 2 == 0 else PieceData.Team.BLUE
 		var result: Dictionary = GameManager.run_headless_game(ai_red, ai_blue, starting)

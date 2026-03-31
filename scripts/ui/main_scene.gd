@@ -49,22 +49,12 @@ func _setup_ai_players(mode: GameManager.GameMode) -> void:
 	ai_players.clear()
 	match mode:
 		GameManager.GameMode.VS_AI:
-			var ai_blue: AIPlayer = AIPlayer.new()
-			ai_blue.team = PieceData.Team.BLUE
-			ai_players[PieceData.Team.BLUE] = ai_blue
+			ai_players[PieceData.Team.BLUE] = HeuristicAI.new(PieceData.Team.BLUE)
 		GameManager.GameMode.AI_TEST:
-			var ai_blue: AIPlayer = AIPlayer.new()
-			ai_blue.team = PieceData.Team.BLUE
-			ai_players[PieceData.Team.BLUE] = ai_blue
+			ai_players[PieceData.Team.BLUE] = HeuristicAI.new(PieceData.Team.BLUE)
 		GameManager.GameMode.AI_VS_AI:
-			var ai_red: AIPlayer = AIPlayer.new()
-			ai_red.team = PieceData.Team.RED
-			var ai_blue: AIPlayer = AIPlayer.new()
-			ai_blue.team = PieceData.Team.BLUE
-			ai_players[PieceData.Team.RED] = ai_red
-			ai_players[PieceData.Team.BLUE] = ai_blue
-	for team: int in ai_players:
-		ai_players[team].reset()
+			ai_players[PieceData.Team.RED] = HeuristicAI.new(PieceData.Team.RED)
+			ai_players[PieceData.Team.BLUE] = HeuristicAI.new(PieceData.Team.BLUE)
 
 
 func _on_options_confirmed(first_team: PieceData.Team) -> void:
@@ -215,7 +205,7 @@ func _execute_ai_move() -> void:
 	if not _is_ai_team(GameManager.current_team):
 		return
 
-	var ai: AIPlayer = ai_players[GameManager.current_team]
+	var ai: AIBase = ai_players[GameManager.current_team]
 	var move: Dictionary = ai.choose_move(GameManager.board_state)
 	if move.size() > 0:
 		GameManager.execute_move(move["from"], move["to"])

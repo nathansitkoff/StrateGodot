@@ -52,7 +52,6 @@ func finish_setup(team: PieceData.Team) -> void:
 	if team == PieceData.Team.RED:
 		_set_phase(GamePhase.SETUP_BLUE)
 	else:
-		# In AI_TEST mode, treat unplaced pieces as captured
 		if game_mode == GameMode.AI_TEST:
 			_register_unplaced_as_captured(PieceData.Team.RED)
 			_register_unplaced_as_captured(PieceData.Team.BLUE)
@@ -62,7 +61,6 @@ func finish_setup(team: PieceData.Team) -> void:
 
 
 func _register_unplaced_as_captured(team_to_check: PieceData.Team) -> void:
-	# Count placed pieces per rank
 	var placed: Dictionary = {}
 	for rank: int in PieceData.RANK_INFO:
 		placed[rank] = 0
@@ -70,12 +68,71 @@ func _register_unplaced_as_captured(team_to_check: PieceData.Team) -> void:
 		var piece: Dictionary = board_state.pieces[piece_id]
 		if piece["team"] == team_to_check:
 			placed[piece["rank"]] += 1
-	# Add unplaced as captured
 	for rank: int in PieceData.RANK_INFO:
 		var total: int = PieceData.RANK_INFO[rank]["count"]
 		var missing: int = total - placed[rank]
 		for i: int in range(missing):
 			captured_pieces[team_to_check].append(rank)
+
+
+# Apply a move on a given board state and captured pieces dict.
+# Returns a result dict: { "combat": bool, "combat_info": Dictionary, "flag_captured": bool, "winner": Team }
+# This is the single source of truth for move/combat logic.
+static func apply_move(from: Vector2i, to: Vector2i, bs: BoardState, caps: Dictionary) -> Dictionary:
+	var piece_id: int = bs.get_piece_at(from)
+	var result: Dictionary = { "combat": false, "flag_captured": false }
+
+	# Reveal scouts that move more than one space
+	var piece: Dictionary = bs.pieces[piece_id]
+	var distance: int = abs(to.x - from.x) + abs(to.y - from.y)
+	if piece["rank"] == PieceData.Rank.SCOUT and distance > 1:
+		piece["revealed"] = true
+
+	var target_id: int = bs.get_piece_at(to)
+
+	if target_id == -1:
+		bs.move_piece(piece_id, to)
+	else:
+		var attacker: Dictionary = bs.pieces[piece_id]
+		var defender: Dictionary = bs.pieces[target_id]
+		var atk_rank: PieceData.Rank = attacker["rank"]
+		var def_rank: PieceData.Rank = defender["rank"]
+		var atk_team: PieceData.Team = attacker["team"]
+		var def_team: PieceData.Team = defender["team"]
+		var combat_result: Combat.Result = Combat.resolve(atk_rank, def_rank)
+
+		attacker["revealed"] = true
+		defender["revealed"] = true
+
+		match combat_result:
+			Combat.Result.ATTACKER_WINS:
+				caps[def_team].append(def_rank)
+				bs.remove_piece(target_id)
+				bs.move_piece(piece_id, to)
+			Combat.Result.DEFENDER_WINS:
+				caps[atk_team].append(atk_rank)
+				bs.remove_piece(piece_id)
+			Combat.Result.BOTH_DIE:
+				caps[atk_team].append(atk_rank)
+				caps[def_team].append(def_rank)
+				bs.remove_piece(piece_id)
+				bs.remove_piece(target_id)
+
+		result["combat"] = true
+		result["combat_info"] = {
+			"atk_rank": atk_rank,
+			"def_rank": def_rank,
+			"atk_team": atk_team,
+			"def_team": def_team,
+			"result": combat_result,
+			"pos": to,
+		}
+
+		if def_rank == PieceData.Rank.FLAG:
+			result["flag_captured"] = true
+			result["winner"] = atk_team
+
+	return result
 
 
 func execute_move(from: Vector2i, to: Vector2i) -> void:
@@ -87,59 +144,14 @@ func execute_move(from: Vector2i, to: Vector2i) -> void:
 	last_move_to = to
 	last_move_team = current_team
 
-	# Reveal scouts that move more than one space
-	var piece: Dictionary = board_state.pieces[piece_id]
-	var distance: int = abs(to.x - from.x) + abs(to.y - from.y)
-	if piece["rank"] == PieceData.Rank.SCOUT and distance > 1:
-		piece["revealed"] = true
+	var move_result: Dictionary = apply_move(from, to, board_state, captured_pieces)
 
-	var target_id: int = board_state.get_piece_at(to)
+	if move_result["combat"]:
+		combat_occurred.emit(move_result["combat_info"])
 
-	if target_id == -1:
-		# Simple move
-		board_state.move_piece(piece_id, to)
-	else:
-		# Combat — capture info before pieces are removed
-		var attacker: Dictionary = board_state.pieces[piece_id]
-		var defender: Dictionary = board_state.pieces[target_id]
-		var atk_rank: PieceData.Rank = attacker["rank"]
-		var def_rank: PieceData.Rank = defender["rank"]
-		var atk_team: PieceData.Team = attacker["team"]
-		var def_team: PieceData.Team = defender["team"]
-		var result: Combat.Result = Combat.resolve(atk_rank, def_rank)
-
-		# Reveal both pieces involved in combat
-		attacker["revealed"] = true
-		defender["revealed"] = true
-
-		match result:
-			Combat.Result.ATTACKER_WINS:
-				captured_pieces[def_team].append(def_rank)
-				board_state.remove_piece(target_id)
-				board_state.move_piece(piece_id, to)
-			Combat.Result.DEFENDER_WINS:
-				captured_pieces[atk_team].append(atk_rank)
-				board_state.remove_piece(piece_id)
-			Combat.Result.BOTH_DIE:
-				captured_pieces[atk_team].append(atk_rank)
-				captured_pieces[def_team].append(def_rank)
-				board_state.remove_piece(piece_id)
-				board_state.remove_piece(target_id)
-
-		var combat_info: Dictionary = {
-			"atk_rank": atk_rank,
-			"def_rank": def_rank,
-			"atk_team": atk_team,
-			"def_team": def_team,
-			"result": result,
-			"pos": to,
-		}
-		combat_occurred.emit(combat_info)
-
-		# Check if flag was captured
-		if def_rank == PieceData.Rank.FLAG:
-			_end_game(atk_team)
-			return
+	if move_result["flag_captured"]:
+		_end_game(move_result["winner"])
+		return
 
 	end_turn()
 
@@ -151,7 +163,6 @@ func end_turn() -> void:
 	else:
 		next_team = PieceData.Team.RED
 
-	# Check if next player can move
 	if not board_state.has_movable_pieces(next_team):
 		_end_game(current_team)
 		return
@@ -165,24 +176,6 @@ func _set_phase(phase: GamePhase) -> void:
 	phase_changed.emit(phase)
 
 
-func _random_setup(bs: BoardState, team: PieceData.Team) -> void:
-	var rows: Array[int] = bs.get_setup_rows(team)
-	var cells: Array[Vector2i] = []
-	for col: int in range(BoardState.BOARD_SIZE):
-		for row: int in rows:
-			var pos: Vector2i = Vector2i(col, row)
-			if bs.is_valid_cell(pos):
-				cells.append(pos)
-	cells.shuffle()
-	var idx: int = 0
-	for rank: int in PieceData.RANK_INFO:
-		var count: int = PieceData.RANK_INFO[rank]["count"]
-		for i: int in range(count):
-			if idx < cells.size():
-				bs.add_piece(rank, team, cells[idx])
-				idx += 1
-
-
 func _end_game(winning_team: PieceData.Team) -> void:
 	winner = winning_team
 	_set_phase(GamePhase.GAME_OVER)
@@ -190,14 +183,14 @@ func _end_game(winning_team: PieceData.Team) -> void:
 
 
 # Run a complete game headlessly. Returns a result dictionary.
-func run_headless_game(ai_red: AIPlayer, ai_blue: AIPlayer, starting_team: PieceData.Team = PieceData.Team.RED) -> Dictionary:
+func run_headless_game(ai_red: AIBase, ai_blue: AIBase, starting_team: PieceData.Team = PieceData.Team.RED) -> Dictionary:
 	var bs: BoardState = BoardState.new()
 	var caps: Dictionary = {
 		PieceData.Team.RED: [] as Array[PieceData.Rank],
 		PieceData.Team.BLUE: [] as Array[PieceData.Rank],
 	}
 
-	# Temporarily swap in headless state
+	# Temporarily swap in headless state (needed for AI deduction reading GameManager.captured_pieces)
 	var old_bs: BoardState = board_state
 	var old_caps: Dictionary = captured_pieces
 	var old_phase: GamePhase = current_phase
@@ -216,24 +209,23 @@ func run_headless_game(ai_red: AIPlayer, ai_blue: AIPlayer, starting_team: Piece
 	ai_red.reset()
 	ai_blue.reset()
 
-	# Use random placement for both sides
-	_random_setup(bs, PieceData.Team.RED)
-	_random_setup(bs, PieceData.Team.BLUE)
+	# Setup — each AI uses its own placement strategy
+	ai_red.generate_setup(bs)
+	ai_blue.generate_setup(bs)
 
 	current_team = starting_team
 	current_phase = GamePhase.PLAY
 
-	# Play up to 2000 turns to prevent infinite games
 	var result_winner: int = -1
 	var result_reason: String = "timeout"
 	var turn_count: int = 0
 	var game_over_flag: bool = false
+
 	for turn: int in range(2000):
 		turn_count = turn
-		var ai: AIPlayer = ai_red if current_team == PieceData.Team.RED else ai_blue
+		var ai: AIBase = ai_red if current_team == PieceData.Team.RED else ai_blue
 		var move: Dictionary = ai.choose_move(bs)
 		if move.size() == 0:
-			# Current player can't move, opponent wins
 			result_winner = PieceData.Team.BLUE if current_team == PieceData.Team.RED else PieceData.Team.RED
 			result_reason = "no_moves"
 			game_over_flag = true
@@ -241,53 +233,18 @@ func run_headless_game(ai_red: AIPlayer, ai_blue: AIPlayer, starting_team: Piece
 
 		var from: Vector2i = move["from"]
 		var to: Vector2i = move["to"]
-		var piece_id: int = bs.get_piece_at(from)
 
 		last_move_from = from
 		last_move_to = to
 		last_move_team = current_team
 
-		# Reveal scouts moving multiple squares
-		var piece: Dictionary = bs.pieces[piece_id]
-		var distance: int = abs(to.x - from.x) + abs(to.y - from.y)
-		if piece["rank"] == PieceData.Rank.SCOUT and distance > 1:
-			piece["revealed"] = true
+		var move_result: Dictionary = apply_move(from, to, bs, caps)
 
-		var target_id: int = bs.get_piece_at(to)
-
-		if target_id == -1:
-			bs.move_piece(piece_id, to)
-		else:
-			var attacker: Dictionary = bs.pieces[piece_id]
-			var defender: Dictionary = bs.pieces[target_id]
-			var atk_rank: PieceData.Rank = attacker["rank"]
-			var def_rank: PieceData.Rank = defender["rank"]
-			var atk_team: PieceData.Team = attacker["team"]
-			var def_team: PieceData.Team = defender["team"]
-			var combat_result: Combat.Result = Combat.resolve(atk_rank, def_rank)
-
-			attacker["revealed"] = true
-			defender["revealed"] = true
-
-			match combat_result:
-				Combat.Result.ATTACKER_WINS:
-					caps[def_team].append(def_rank)
-					bs.remove_piece(target_id)
-					bs.move_piece(piece_id, to)
-				Combat.Result.DEFENDER_WINS:
-					caps[atk_team].append(atk_rank)
-					bs.remove_piece(piece_id)
-				Combat.Result.BOTH_DIE:
-					caps[atk_team].append(atk_rank)
-					caps[def_team].append(def_rank)
-					bs.remove_piece(piece_id)
-					bs.remove_piece(target_id)
-
-			if def_rank == PieceData.Rank.FLAG:
-				result_winner = atk_team
-				result_reason = "flag_captured"
-				game_over_flag = true
-				break
+		if move_result["flag_captured"]:
+			result_winner = move_result["winner"]
+			result_reason = "flag_captured"
+			game_over_flag = true
+			break
 
 		# Notify opponent AI of the move (only if mover survived)
 		var moved_piece_id: int = bs.get_piece_at(to)
