@@ -25,13 +25,16 @@ const PIECE_VALUES: Dictionary = {
 
 
 static func create(type_index: int, ai_team: PieceData.Team) -> AIBase:
+	var script_path: String
 	match type_index:
 		1:
-			return MonteCarloAI.new(ai_team)
+			script_path = "res://scripts/ai/monte_carlo_ai.gd"
 		2:
-			return RolloutAI.new(ai_team)
+			script_path = "res://scripts/ai/rollout_ai.gd"
 		_:
-			return HeuristicAI.new(ai_team)
+			script_path = "res://scripts/ai/ai_player.gd"
+	var ai: AIBase = load(script_path).new(ai_team)
+	return ai
 
 
 func _init(ai_team: PieceData.Team = PieceData.Team.BLUE) -> void:
