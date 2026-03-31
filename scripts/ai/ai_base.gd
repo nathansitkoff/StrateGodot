@@ -5,7 +5,7 @@ const AI_NAMES: Array[String] = ["Heuristic", "Monte Carlo"]
 
 var team: PieceData.Team = PieceData.Team.BLUE
 # Track enemy piece IDs that have moved at least once
-var _has_moved: Dictionary = {}
+var has_moved: Dictionary = {}
 
 
 static func create(type_index: int, ai_team: PieceData.Team) -> AIBase:
@@ -21,12 +21,12 @@ func _init(ai_team: PieceData.Team = PieceData.Team.BLUE) -> void:
 
 
 func reset() -> void:
-	_has_moved.clear()
+	has_moved.clear()
 
 
 func notify_move(piece_id: int, piece_team: PieceData.Team) -> void:
 	if piece_team != team:
-		_has_moved[piece_id] = true
+		has_moved[piece_id] = true
 
 
 func get_enemy_team() -> PieceData.Team:

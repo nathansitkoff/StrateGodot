@@ -231,7 +231,7 @@ func _determinize(board_state: BoardState) -> BoardState:
 	var moved_ids: Array[int] = []
 	var stationary_ids: Array[int] = []
 	for pid: int in unrevealed_ids:
-		if pid in _has_moved:
+		if pid in has_moved:
 			moved_ids.append(pid)
 		else:
 			stationary_ids.append(pid)
