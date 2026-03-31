@@ -37,7 +37,7 @@ func start_setup(team: PieceData.Team, test_mode: bool = false) -> void:
 		if piece["team"] == current_team:
 			placed_counts[piece["rank"]] += 1
 
-	var team_name: String = "RED" if team == PieceData.Team.RED else "BLUE"
+	var team_name: String = PieceData.get_team_name(team)
 	if _test_mode:
 		team_label.text = "AI Test — %s Setup" % team_name
 	else:

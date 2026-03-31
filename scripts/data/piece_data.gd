@@ -56,3 +56,30 @@ static func get_move_range(rank: Rank) -> int:
 
 static func get_count(rank: Rank) -> int:
 	return RANK_INFO[rank]["count"]
+
+
+static func format_remaining(team: Team) -> String:
+	var lost: Array = GameManager.captured_pieces[team]
+	var lost_counts: Dictionary = {}
+	for rank: int in lost:
+		if rank not in lost_counts:
+			lost_counts[rank] = 0
+		lost_counts[rank] += 1
+
+	var lines: Array[String] = []
+	var ranks: Array = RANK_INFO.keys()
+	ranks.sort()
+	ranks.reverse()
+
+	for rank: int in ranks:
+		var info: Dictionary = RANK_INFO[rank]
+		var total: int = info["count"]
+		var dead: int = lost_counts.get(rank, 0)
+		var alive: int = total - dead
+		lines.append("  %s (%s): %d/%d" % [info["name"], info["display"], alive, total])
+
+	return "\n".join(lines)
+
+
+static func get_team_name(team: Team) -> String:
+	return "RED" if team == Team.RED else "BLUE"

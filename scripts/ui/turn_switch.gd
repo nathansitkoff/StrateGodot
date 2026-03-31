@@ -6,7 +6,7 @@ signal acknowledged
 
 
 func show_turn(team: PieceData.Team, board_only: bool = false) -> void:
-	var team_name: String = "RED" if team == PieceData.Team.RED else "BLUE"
+	var team_name: String = PieceData.get_team_name(team)
 	label.text = "Player %s's Turn\n\nClick to Continue" % team_name
 	if board_only:
 		offset_left = 220

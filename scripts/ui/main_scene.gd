@@ -178,7 +178,7 @@ func _update_remaining() -> void:
 
 
 func _update_turn_bar(team: PieceData.Team) -> void:
-	var team_name: String = "RED" if team == PieceData.Team.RED else "BLUE"
+	var team_name: String = PieceData.get_team_name(team)
 	var color: Color = Color(0.9, 0.3, 0.3) if team == PieceData.Team.RED else Color(0.3, 0.4, 0.9)
 	turn_label.text = "%s's Turn" % team_name
 	turn_label.add_theme_color_override("font_color", color)

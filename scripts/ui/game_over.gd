@@ -14,6 +14,6 @@ func _ready() -> void:
 
 
 func show_winner(team: PieceData.Team) -> void:
-	var team_name: String = "RED" if team == PieceData.Team.RED else "BLUE"
+	var team_name: String = PieceData.get_team_name(team)
 	label.text = "Player %s Wins!" % team_name
 	visible = true
