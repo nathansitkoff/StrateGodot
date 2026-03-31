@@ -31,13 +31,13 @@ func _get_possible_ranks(piece_id: int, board_state: BoardState) -> Array[int]:
 
 	# Build list of possible ranks
 	var possible: Array[int] = []
-	var has_moved: bool = piece_id in has_moved
+	var piece_has_moved: bool = piece_id in has_moved
 
 	for rank: int in PieceData.RANK_INFO:
 		var total: int = PieceData.RANK_INFO[rank]["count"]
 		if accounted[rank] >= total:
 			continue
-		if has_moved and (rank == PieceData.Rank.BOMB or rank == PieceData.Rank.FLAG):
+		if piece_has_moved and (rank == PieceData.Rank.BOMB or rank == PieceData.Rank.FLAG):
 			continue
 		possible.append(rank)
 
