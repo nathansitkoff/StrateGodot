@@ -1,11 +1,11 @@
-class_name MonteCarloAI
+class_name RolloutAI
 extends AIBase
 
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
 # Tuning parameters
-var samples: int = 20
-var max_opponent_moves: int = 5
+var samples: int = 10
+var rollout_depth: int = 20
 
 
 func _init(ai_team: PieceData.Team = PieceData.Team.BLUE) -> void:
@@ -43,6 +43,8 @@ func choose_move(board_state: BoardState) -> Dictionary:
 		for s: int in range(samples):
 			var world: BoardState = determinize(board_state)
 			var caps: Dictionary = clone_caps()
+
+			# Apply our candidate move
 			var move_result: Dictionary = GameManager.apply_move(move["from"], move["to"], world, caps)
 
 			if move_result.get("flag_captured", false):
@@ -52,8 +54,9 @@ func choose_move(board_state: BoardState) -> Dictionary:
 					total_score -= 10000.0
 				continue
 
-			var opp_score: float = _evaluate_opponent_response(world, caps)
-			total_score += opp_score
+			# Run a rollout: both sides play using HeuristicAI for N turns
+			var rollout_score: float = _run_rollout(world, caps)
+			total_score += rollout_score
 
 		var avg_score: float = total_score / samples
 		if avg_score > best_score:
@@ -63,42 +66,40 @@ func choose_move(board_state: BoardState) -> Dictionary:
 	return best_move
 
 
-func _evaluate_opponent_response(world: BoardState, caps: Dictionary) -> float:
-	var enemy: PieceData.Team = get_enemy_team()
-	var enemy_pieces: Array[int] = world.get_team_pieces(enemy)
-	if enemy_pieces.size() == 0:
-		return 10000.0
+func _run_rollout(world: BoardState, caps: Dictionary) -> float:
+	# Create temporary HeuristicAI players for the rollout
+	var sim_red: HeuristicAI = HeuristicAI.new(PieceData.Team.RED)
+	var sim_blue: HeuristicAI = HeuristicAI.new(PieceData.Team.BLUE)
 
-	var opp_moves: Array[Dictionary] = []
-	for piece_id: int in enemy_pieces:
-		var piece: Dictionary = world.pieces[piece_id]
-		if not PieceData.can_move(piece["rank"]):
-			continue
-		var moves: Array[Vector2i] = world.get_valid_moves(piece_id)
-		for target_pos: Vector2i in moves:
-			opp_moves.append({ "from": piece["pos"], "to": target_pos })
+	# The opponent just played (we applied our move), so it's opponent's turn next
+	var current: PieceData.Team = get_enemy_team()
 
-	if opp_moves.size() == 0:
-		return 10000.0
+	for turn: int in range(rollout_depth):
+		var sim_ai: HeuristicAI = sim_red if current == PieceData.Team.RED else sim_blue
+		var move: Dictionary = sim_ai.choose_move(world)
+		if move.size() == 0:
+			# Current player can't move — opponent wins
+			if current == team:
+				return -10000.0
+			else:
+				return 10000.0
 
-	opp_moves.shuffle()
-	var moves_to_check: int = min(opp_moves.size(), max_opponent_moves)
-
-	var worst_for_us: float = 999999.0
-	for i: int in range(moves_to_check):
-		var opp_move: Dictionary = opp_moves[i]
-		var sim_world: BoardState = world.clone()
-		var sim_caps: Dictionary = clone_caps_from(caps)
-		var result: Dictionary = GameManager.apply_move(opp_move["from"], opp_move["to"], sim_world, sim_caps)
+		var result: Dictionary = GameManager.apply_move(move["from"], move["to"], world, caps)
 
 		if result.get("flag_captured", false):
 			if result["winner"] == team:
-				worst_for_us = min(worst_for_us, 10000.0)
+				return 10000.0
 			else:
-				worst_for_us = min(worst_for_us, -10000.0)
-			continue
+				return -10000.0
 
-		var score: float = score_position(sim_world)
-		worst_for_us = min(worst_for_us, score)
+		# Check if next player can move
+		var next: PieceData.Team = PieceData.Team.BLUE if current == PieceData.Team.RED else PieceData.Team.RED
+		if not world.has_movable_pieces(next):
+			if current == team:
+				return 10000.0
+			else:
+				return -10000.0
+		current = next
 
-	return worst_for_us
+	# Rollout didn't end — evaluate the position
+	return score_position(world)
