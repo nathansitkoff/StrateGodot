@@ -1,7 +1,19 @@
 class_name AIBase
 extends RefCounted
 
+const AI_NAMES: Array[String] = ["Heuristic", "Monte Carlo"]
+
 var team: PieceData.Team = PieceData.Team.BLUE
+# Track enemy piece IDs that have moved at least once
+var _has_moved: Dictionary = {}
+
+
+static func create(type_index: int, ai_team: PieceData.Team) -> AIBase:
+	match type_index:
+		1:
+			return MonteCarloAI.new(ai_team)
+		_:
+			return HeuristicAI.new(ai_team)
 
 
 func _init(ai_team: PieceData.Team = PieceData.Team.BLUE) -> void:
@@ -9,11 +21,18 @@ func _init(ai_team: PieceData.Team = PieceData.Team.BLUE) -> void:
 
 
 func reset() -> void:
-	pass
+	_has_moved.clear()
 
 
-func notify_move(_piece_id: int, _piece_team: PieceData.Team) -> void:
-	pass
+func notify_move(piece_id: int, piece_team: PieceData.Team) -> void:
+	if piece_team != team:
+		_has_moved[piece_id] = true
+
+
+func get_enemy_team() -> PieceData.Team:
+	if team == PieceData.Team.BLUE:
+		return PieceData.Team.RED
+	return PieceData.Team.BLUE
 
 
 func generate_setup(board_state: BoardState) -> void:
@@ -29,7 +48,6 @@ func generate_setup(board_state: BoardState) -> void:
 	var idx: int = 0
 	for rank: int in PieceData.RANK_INFO:
 		var remaining: int = PieceData.RANK_INFO[rank]["count"]
-		# Subtract already placed pieces of this rank
 		for piece_id: int in board_state.pieces:
 			var p: Dictionary = board_state.pieces[piece_id]
 			if p["team"] == team and p["rank"] == rank:

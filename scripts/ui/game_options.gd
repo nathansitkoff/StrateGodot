@@ -12,9 +12,6 @@ signal options_confirmed(first_team: PieceData.Team, red_ai_type: int, blue_ai_t
 
 var _first_team: PieceData.Team = PieceData.Team.RED
 
-const AI_TYPES: Array[String] = ["Heuristic", "Monte Carlo"]
-
-
 func _ready() -> void:
 	red_first_button.pressed.connect(func() -> void:
 		_first_team = PieceData.Team.RED
@@ -28,7 +25,7 @@ func _ready() -> void:
 		visible = false
 		options_confirmed.emit(_first_team, red_ai_select.selected, blue_ai_select.selected)
 	)
-	for ai_name: String in AI_TYPES:
+	for ai_name: String in AIBase.AI_NAMES:
 		red_ai_select.add_item(ai_name)
 		blue_ai_select.add_item(ai_name)
 

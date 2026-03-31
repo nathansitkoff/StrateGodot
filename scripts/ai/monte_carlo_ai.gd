@@ -2,7 +2,6 @@ class_name MonteCarloAI
 extends AIBase
 
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
-var _has_moved: Dictionary = {}
 
 # Tuning parameters
 var samples: int = 20
@@ -28,21 +27,6 @@ const PIECE_VALUES: Dictionary = {
 func _init(ai_team: PieceData.Team = PieceData.Team.BLUE) -> void:
 	super(ai_team)
 	_rng.randomize()
-
-
-func reset() -> void:
-	_has_moved.clear()
-
-
-func notify_move(piece_id: int, piece_team: PieceData.Team) -> void:
-	if piece_team != team:
-		_has_moved[piece_id] = true
-
-
-func _get_enemy_team() -> PieceData.Team:
-	if team == PieceData.Team.BLUE:
-		return PieceData.Team.RED
-	return PieceData.Team.BLUE
 
 
 # Use HeuristicAI's placement strategy
@@ -100,7 +84,7 @@ func choose_move(board_state: BoardState) -> Dictionary:
 
 
 func _evaluate_opponent_response(world: BoardState, caps: Dictionary) -> float:
-	var enemy: PieceData.Team = _get_enemy_team()
+	var enemy: PieceData.Team = get_enemy_team()
 	var enemy_pieces: Array[int] = world.get_team_pieces(enemy)
 	if enemy_pieces.size() == 0:
 		return 10000.0
@@ -205,7 +189,7 @@ func _score_position(bs: BoardState, _caps: Dictionary) -> float:
 # Create a determinized copy: assign random ranks to unrevealed enemy pieces
 func _determinize(board_state: BoardState) -> BoardState:
 	var world: BoardState = board_state.clone()
-	var enemy: PieceData.Team = _get_enemy_team()
+	var enemy: PieceData.Team = get_enemy_team()
 
 	# Collect unrevealed enemy piece IDs
 	var unrevealed_ids: Array[int] = []

@@ -44,24 +44,16 @@ func _on_mode_selected(mode: GameManager.GameMode) -> void:
 	game_options.show_options(mode)
 
 
-func _create_ai(type_index: int, ai_team: PieceData.Team) -> AIBase:
-	match type_index:
-		1:
-			return MonteCarloAI.new(ai_team)
-		_:
-			return HeuristicAI.new(ai_team)
-
-
 func _on_options_confirmed(first_team: PieceData.Team, red_ai_type: int, blue_ai_type: int) -> void:
 	ai_players.clear()
 	match _pending_mode:
 		GameManager.GameMode.VS_AI:
-			ai_players[PieceData.Team.BLUE] = _create_ai(blue_ai_type, PieceData.Team.BLUE)
+			ai_players[PieceData.Team.BLUE] = AIBase.create(blue_ai_type, PieceData.Team.BLUE)
 		GameManager.GameMode.AI_TEST:
-			ai_players[PieceData.Team.BLUE] = _create_ai(blue_ai_type, PieceData.Team.BLUE)
+			ai_players[PieceData.Team.BLUE] = AIBase.create(blue_ai_type, PieceData.Team.BLUE)
 		GameManager.GameMode.AI_VS_AI:
-			ai_players[PieceData.Team.RED] = _create_ai(red_ai_type, PieceData.Team.RED)
-			ai_players[PieceData.Team.BLUE] = _create_ai(blue_ai_type, PieceData.Team.BLUE)
+			ai_players[PieceData.Team.RED] = AIBase.create(red_ai_type, PieceData.Team.RED)
+			ai_players[PieceData.Team.BLUE] = AIBase.create(blue_ai_type, PieceData.Team.BLUE)
 	GameManager.start_game(_pending_mode, first_team)
 
 

@@ -33,7 +33,6 @@ var _timeouts: int = 0
 var _total_turns: int = 0
 
 const BATCH_SIZE: int = 1
-const AI_TYPES: Array[String] = ["Heuristic", "Monte Carlo"]
 
 
 func _ready() -> void:
@@ -42,19 +41,9 @@ func _ready() -> void:
 		visible = false
 		back_pressed.emit()
 	)
-	for ai_name: String in AI_TYPES:
+	for ai_name: String in AIBase.AI_NAMES:
 		red_ai_select.add_item(ai_name)
 		blue_ai_select.add_item(ai_name)
-
-
-func _create_ai(type_index: int, ai_team: PieceData.Team) -> AIBase:
-	match type_index:
-		0:
-			return HeuristicAI.new(ai_team)
-		1:
-			return MonteCarloAI.new(ai_team)
-		_:
-			return HeuristicAI.new(ai_team)
 
 
 func _on_start() -> void:
@@ -92,8 +81,8 @@ func _run_batch() -> void:
 		if _games_played >= _games_total:
 			break
 
-		var ai_red: AIBase = _create_ai(red_ai_select.selected, PieceData.Team.RED)
-		var ai_blue: AIBase = _create_ai(blue_ai_select.selected, PieceData.Team.BLUE)
+		var ai_red: AIBase = AIBase.create(red_ai_select.selected, PieceData.Team.RED)
+		var ai_blue: AIBase = AIBase.create(blue_ai_select.selected, PieceData.Team.BLUE)
 
 		var starting: PieceData.Team = PieceData.Team.RED if _games_played % 2 == 0 else PieceData.Team.BLUE
 		var result: Dictionary = GameManager.run_headless_game(ai_red, ai_blue, starting)

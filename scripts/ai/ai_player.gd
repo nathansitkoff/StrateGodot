@@ -2,8 +2,6 @@ class_name HeuristicAI
 extends AIBase
 
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
-# Track enemy piece IDs that have moved at least once
-var _has_moved: Dictionary = {}
 
 
 func _init(ai_team: PieceData.Team = PieceData.Team.BLUE) -> void:
@@ -11,24 +9,9 @@ func _init(ai_team: PieceData.Team = PieceData.Team.BLUE) -> void:
 	_rng.randomize()
 
 
-func reset() -> void:
-	_has_moved.clear()
-
-
-func notify_move(piece_id: int, piece_team: PieceData.Team) -> void:
-	if piece_team != team:
-		_has_moved[piece_id] = true
-
-
-func _get_enemy_team() -> PieceData.Team:
-	if team == PieceData.Team.BLUE:
-		return PieceData.Team.RED
-	return PieceData.Team.BLUE
-
-
 # Returns the set of ranks an unrevealed enemy piece could possibly be.
 func _get_possible_ranks(piece_id: int, board_state: BoardState) -> Array[int]:
-	var enemy_team: PieceData.Team = _get_enemy_team()
+	var enemy_team: PieceData.Team = get_enemy_team()
 
 	# Count how many of each rank are accounted for (revealed alive + captured)
 	var accounted: Dictionary = {}
@@ -228,7 +211,7 @@ func choose_move(board_state: BoardState) -> Dictionary:
 	var my_pieces: Array[int] = board_state.get_team_pieces(team)
 	var shuffled_pieces: Array[int] = my_pieces.duplicate()
 	shuffled_pieces.shuffle()
-	var enemy_team: PieceData.Team = _get_enemy_team()
+	var enemy_team: PieceData.Team = get_enemy_team()
 
 	var flag_move: Dictionary = _find_flag_capture(board_state, shuffled_pieces)
 	if flag_move.size() > 0:
