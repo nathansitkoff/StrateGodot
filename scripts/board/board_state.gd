@@ -142,6 +142,23 @@ func get_team_pieces(team: PieceData.Team) -> Array[int]:
 	return result
 
 
+func clone() -> BoardState:
+	var bs: BoardState = BoardState.new()
+	for col: int in range(BOARD_SIZE):
+		for row: int in range(BOARD_SIZE):
+			bs.grid[col][row] = grid[col][row]
+	for piece_id: int in pieces:
+		var p: Dictionary = pieces[piece_id]
+		bs.pieces[piece_id] = {
+			"rank": p["rank"],
+			"team": p["team"],
+			"revealed": p["revealed"],
+			"pos": Vector2i(p["pos"].x, p["pos"].y),
+		}
+	bs._next_id = _next_id
+	return bs
+
+
 func get_setup_rows(team: PieceData.Team) -> Array[int]:
 	# Returns [back_row, second_row, third_row, front_row]
 	# Back = furthest from enemy, front = closest to enemy
