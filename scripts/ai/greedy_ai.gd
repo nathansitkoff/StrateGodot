@@ -10,53 +10,8 @@ func _init(ai_team: PieceData.Team = PieceData.Team.BLUE) -> void:
 
 
 func generate_setup(board_state: BoardState) -> void:
-	var rows: Array[int] = board_state.get_setup_rows(team)
-	# rows[0] = back, rows[1] = second, rows[2] = third, rows[3] = front
-	var back_rows: Array[int] = [rows[0], rows[1]]
-	var front_rows: Array[int] = [rows[2], rows[3]]
-
-	var back_cells: Array[Vector2i] = []
-	var front_cells: Array[Vector2i] = []
-	for col: int in range(BoardState.BOARD_SIZE):
-		for row: int in back_rows:
-			var pos: Vector2i = Vector2i(col, row)
-			if board_state.is_valid_cell(pos) and board_state.get_piece_at(pos) == -1:
-				back_cells.append(pos)
-		for row: int in front_rows:
-			var pos: Vector2i = Vector2i(col, row)
-			if board_state.is_valid_cell(pos) and board_state.get_piece_at(pos) == -1:
-				front_cells.append(pos)
-
-	back_cells.shuffle()
-	front_cells.shuffle()
-
-	# Place flag and bombs in back rows
-	var back_idx: int = 0
-	board_state.add_piece(PieceData.Rank.FLAG, team, back_cells[back_idx])
-	back_idx += 1
-	for i: int in range(PieceData.get_count(PieceData.Rank.BOMB)):
-		if back_idx < back_cells.size():
-			board_state.add_piece(PieceData.Rank.BOMB, team, back_cells[back_idx])
-			back_idx += 1
-
-	# Remaining back cells get overflow movers
-	var overflow_back: Array[Vector2i] = []
-	for i: int in range(back_idx, back_cells.size()):
-		overflow_back.append(back_cells[i])
-
-	# Place all movable pieces in front rows first, overflow to back
-	var mover_cells: Array[Vector2i] = []
-	mover_cells.append_array(front_cells)
-	mover_cells.append_array(overflow_back)
-
-	var mover_ranks: Array[int] = []
-	for rank: int in PieceData.RANK_INFO:
-		if PieceData.can_move(rank):
-			for i: int in range(PieceData.get_count(rank)):
-				mover_ranks.append(rank)
-
-	for i: int in range(min(mover_ranks.size(), mover_cells.size())):
-		board_state.add_piece(mover_ranks[i], team, mover_cells[i])
+	var helper: HeuristicAI = HeuristicAI.new(team)
+	helper.generate_setup(board_state)
 
 
 func choose_move(board_state: BoardState) -> Dictionary:
