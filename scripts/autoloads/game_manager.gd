@@ -150,6 +150,9 @@ func execute_move(from: Vector2i, to: Vector2i) -> void:
 
 	var move_result: Dictionary = apply_move(from, to, board_state, captured_pieces)
 
+	if recorder != null:
+		recorder.record_checksum(board_state)
+
 	if move_result["combat"]:
 		combat_occurred.emit(move_result["combat_info"])
 
@@ -219,6 +222,7 @@ func run_headless_game(ai_red: AIBase, ai_blue: AIBase, starting_team: PieceData
 
 	if game_recorder != null:
 		game_recorder.record_placements_from_board(bs)
+		game_recorder.record_checksum(bs)
 
 	current_team = starting_team
 	current_phase = GamePhase.PLAY
@@ -249,6 +253,9 @@ func run_headless_game(ai_red: AIBase, ai_blue: AIBase, starting_team: PieceData
 			game_recorder.record_move(from, to)
 
 		var move_result: Dictionary = apply_move(from, to, bs, caps)
+
+		if game_recorder != null:
+			game_recorder.record_checksum(bs)
 
 		if move_result["flag_captured"]:
 			result_winner = move_result["winner"]

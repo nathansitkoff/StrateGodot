@@ -112,9 +112,10 @@ func _on_phase_changed(phase: GameManager.GamePhase) -> void:
 			else:
 				turn_switch.show_turn(PieceData.Team.BLUE, false)
 		GameManager.GamePhase.PLAY:
-			# Record initial placements
+			# Record initial placements and checksum
 			if _recorder != null:
 				_recorder.record_placements_from_board(GameManager.board_state)
+				_recorder.record_checksum(GameManager.board_state)
 			setup_phase.visible = false
 			hud.visible = true
 			left_hud.visible = true

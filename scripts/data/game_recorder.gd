@@ -4,6 +4,7 @@ extends RefCounted
 var metadata: Dictionary = {}
 var placements: Array[Dictionary] = []
 var moves: Array[Dictionary] = []
+var checksums: Array[int] = []
 
 
 func start_recording(mode: String, red_ai: String, blue_ai: String, first_team: PieceData.Team) -> void:
@@ -19,6 +20,7 @@ func start_recording(mode: String, red_ai: String, blue_ai: String, first_team: 
 	}
 	placements.clear()
 	moves.clear()
+	checksums.clear()
 
 
 func record_placement(piece_id: int, rank: PieceData.Rank, team_val: PieceData.Team, pos: Vector2i) -> void:
@@ -35,6 +37,10 @@ func record_placements_from_board(board_state: BoardState) -> void:
 	for piece_id: int in board_state.pieces:
 		var piece: Dictionary = board_state.pieces[piece_id]
 		record_placement(piece_id, piece["rank"], piece["team"], piece["pos"])
+
+
+func record_checksum(board_state: BoardState) -> void:
+	checksums.append(board_state.checksum())
 
 
 func record_move(from: Vector2i, to: Vector2i) -> void:
@@ -57,6 +63,7 @@ func save_to_file(filepath: String) -> void:
 		"metadata": metadata,
 		"placements": placements,
 		"moves": moves,
+		"checksums": checksums,
 	}
 	var file: FileAccess = FileAccess.open(filepath, FileAccess.WRITE)
 	file.store_string(JSON.stringify(data, "\t"))
@@ -94,6 +101,10 @@ static func load_from_file(filepath: String) -> GameRecorder:
 			"to_x": int(m["to_x"]),
 			"to_y": int(m["to_y"]),
 		})
+
+	if "checksums" in data:
+		for c: int in data["checksums"]:
+			recorder.checksums.append(int(c))
 
 	return recorder
 

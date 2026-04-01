@@ -17,6 +17,7 @@ signal back_pressed
 @onready var back_button: Button = %ReplayBackButton
 @onready var move_label: Label = %MoveLabel
 @onready var speed_select: OptionButton = %SpeedSelect
+@onready var verify_check: CheckBox = %VerifyCheck
 @onready var info_label: Label = %ReplayInfoLabel
 
 var _recorder: GameRecorder = null
@@ -178,6 +179,19 @@ func _apply_state() -> void:
 	board.refresh()
 
 	move_label.text = "Move %d / %d" % [_current_move, _recorder.get_total_moves()]
+
+	# Verify checksum if enabled
+	if verify_check.button_pressed and _current_move < _recorder.checksums.size():
+		var expected: int = _recorder.checksums[_current_move]
+		var actual: int = bs.checksum()
+		if actual != expected:
+			info_label.text = "CHECKSUM MISMATCH at move %d! Expected %d, got %d" % [_current_move, expected, actual]
+			info_label.add_theme_color_override("font_color", Color.RED)
+			_playing = false
+			return
+		else:
+			info_label.remove_theme_color_override("font_color")
+			_update_info()
 
 
 func _update_info() -> void:
