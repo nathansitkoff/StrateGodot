@@ -150,7 +150,6 @@ func _find_probe_attack(board_state: BoardState, pieces_weakest_first: Array[int
 		var piece: Dictionary = board_state.pieces[piece_id]
 		if not PieceData.can_move(piece["rank"]):
 			continue
-		# Don't send valuable pieces: Marshal, General, Colonel, Miner, Spy
 		if piece["rank"] in [PieceData.Rank.MARSHAL, PieceData.Rank.GENERAL, PieceData.Rank.COLONEL, PieceData.Rank.MINER, PieceData.Rank.SPY]:
 			continue
 		var moves: Array[Vector2i] = board_state.get_valid_moves(piece_id)
@@ -166,7 +165,6 @@ func _find_probe_attack(board_state: BoardState, pieces_weakest_first: Array[int
 
 # Rules 6, 7: Route a specific piece type toward a revealed enemy type
 func _route_toward_revealed(board_state: BoardState, mover_rank: PieceData.Rank, target_rank: PieceData.Rank) -> Dictionary:
-	# Find all revealed enemy pieces of target rank
 	var enemy_team: PieceData.Team = get_enemy_team()
 	var targets: Array[Vector2i] = []
 	for piece_id: int in board_state.pieces:
@@ -194,11 +192,10 @@ func _route_toward_revealed(board_state: BoardState, mover_rank: PieceData.Rank,
 				closest_dist = d
 				closest_target = t
 
-		# Find the move that gets closest to the target
-		var step: Dictionary = _step_toward(board_state, piece_id, closest_target)
+		var step: Dictionary = _try_advance_toward(board_state, piece["pos"], closest_target)
 		if step.size() > 0:
 			var new_dist: int = _manhattan(step["to"], closest_target)
-			if new_dist < closest_dist and new_dist < best_dist:
+			if new_dist < best_dist:
 				best_dist = new_dist
 				best_move = step
 
@@ -207,7 +204,6 @@ func _route_toward_revealed(board_state: BoardState, mover_rank: PieceData.Rank,
 
 # Rule 8: Move toward nearest unrevealed enemy (weakest piece first)
 func _move_toward_unrevealed(board_state: BoardState, pieces_weakest_first: Array[int], enemy_team: PieceData.Team) -> Dictionary:
-	# Collect all unrevealed enemy positions
 	var enemy_positions: Array[Vector2i] = []
 	for piece_id: int in board_state.pieces:
 		var piece: Dictionary = board_state.pieces[piece_id]
@@ -231,11 +227,9 @@ func _move_toward_unrevealed(board_state: BoardState, pieces_weakest_first: Arra
 				closest_dist = d
 				closest = ep
 
-		var step: Dictionary = _step_toward(board_state, piece_id, closest)
+		var step: Dictionary = _try_advance_toward(board_state, piece["pos"], closest)
 		if step.size() > 0:
-			var new_dist: int = _manhattan(step["to"], closest)
-			if new_dist < closest_dist:
-				return step
+			return step
 
 	return {}
 
@@ -248,20 +242,11 @@ func _advance_forward(board_state: BoardState, pieces_weakest_first: Array[int])
 		if not PieceData.can_move(piece["rank"]):
 			continue
 		var pos: Vector2i = piece["pos"]
-		var forward_pos: Vector2i = Vector2i(pos.x, pos.y + forward)
-
-		# Try forward
-		if _is_valid_empty(board_state, forward_pos):
-			return { "from": pos, "to": forward_pos }
-
-		# Water deflection: try right, then left
-		if board_state.is_in_bounds(forward_pos) and board_state.is_lake(forward_pos):
-			var right: Vector2i = Vector2i(pos.x + 1, pos.y)
-			if _is_valid_empty(board_state, right):
-				return { "from": pos, "to": right }
-			var left: Vector2i = Vector2i(pos.x - 1, pos.y)
-			if _is_valid_empty(board_state, left):
-				return { "from": pos, "to": left }
+		# Use a far-away target straight ahead to drive forward movement
+		var target: Vector2i = Vector2i(pos.x, pos.y + forward * 20)
+		var step: Dictionary = _try_advance_toward(board_state, pos, target)
+		if step.size() > 0:
+			return step
 
 	return {}
 
@@ -298,47 +283,52 @@ func _manhattan(a: Vector2i, b: Vector2i) -> int:
 	return abs(a.x - b.x) + abs(a.y - b.y)
 
 
-# Try to step toward a target: forward first, then water deflection
-func _step_toward(board_state: BoardState, piece_id: int, target: Vector2i) -> Dictionary:
-	var piece: Dictionary = board_state.pieces[piece_id]
-	var pos: Vector2i = piece["pos"]
-	var moves: Array[Vector2i] = board_state.get_valid_moves(piece_id)
-
-	# Only consider non-combat moves
-	var empty_moves: Array[Vector2i] = []
-	for m: Vector2i in moves:
-		if board_state.get_piece_at(m) == -1:
-			empty_moves.append(m)
-
-	if empty_moves.size() == 0:
-		return {}
-
-	# Pick the move that minimizes distance to target
-	var best_pos: Vector2i = empty_moves[0]
-	var best_dist: int = _manhattan(empty_moves[0], target)
-	for m: Vector2i in empty_moves:
-		var d: int = _manhattan(m, target)
-		if d < best_dist:
-			best_dist = d
-			best_pos = m
-
-	# Only return if it's strictly closer than current position
-	if best_dist < _manhattan(pos, target):
-		return { "from": pos, "to": best_pos }
-
-	# Water deflection: if forward is water, try right then left
-	var forward: int = _get_forward_dir()
-	var forward_pos: Vector2i = Vector2i(pos.x, pos.y + forward)
-	if board_state.is_in_bounds(forward_pos) and board_state.is_lake(forward_pos):
-		var right: Vector2i = Vector2i(pos.x + 1, pos.y)
-		if right in empty_moves:
-			return { "from": pos, "to": right }
-		var left: Vector2i = Vector2i(pos.x - 1, pos.y)
-		if left in empty_moves:
-			return { "from": pos, "to": left }
-
-	return {}
-
-
 func _is_valid_empty(board_state: BoardState, pos: Vector2i) -> bool:
 	return board_state.is_valid_cell(pos) and board_state.get_piece_at(pos) == -1
+
+
+# Core movement helper: try to move from pos toward target.
+# 1. Determine the best cardinal direction toward the target
+# 2. If that cell is free, go there
+# 3. If blocked, deflect: try right if right and ahead-right are free, else left if left and ahead-left are free
+# 4. If no deflection works, return empty (this piece can't advance)
+func _try_advance_toward(board_state: BoardState, pos: Vector2i, target: Vector2i) -> Dictionary:
+	var forward: int = _get_forward_dir()
+	var dx: int = target.x - pos.x
+	var dy: int = target.y - pos.y
+
+	# Determine primary direction: prefer vertical (forward/backward) unless target is purely lateral
+	var primary: Vector2i
+	if dy != 0:
+		# Move vertically toward target
+		primary = Vector2i(0, 1 if dy > 0 else -1)
+	elif dx != 0:
+		# Target is on same row, move horizontally
+		primary = Vector2i(1 if dx > 0 else -1, 0)
+	else:
+		# Already at target
+		return {}
+
+	var primary_pos: Vector2i = pos + primary
+
+	# Try primary direction
+	if _is_valid_empty(board_state, primary_pos):
+		return { "from": pos, "to": primary_pos }
+
+	# Primary blocked — try deflection
+	# Determine "ahead" direction for deflection check (the direction we want to go)
+	var ahead: Vector2i = primary
+
+	# Try right deflection: right cell free AND ahead-right cell free
+	var right: Vector2i = Vector2i(pos.x + 1, pos.y)
+	var ahead_right: Vector2i = Vector2i(pos.x + 1, pos.y + ahead.y) if ahead.y != 0 else Vector2i(pos.x + 1 + ahead.x, pos.y)
+	if _is_valid_empty(board_state, right) and _is_valid_empty(board_state, ahead_right):
+		return { "from": pos, "to": right }
+
+	# Try left deflection: left cell free AND ahead-left cell free
+	var left: Vector2i = Vector2i(pos.x - 1, pos.y)
+	var ahead_left: Vector2i = Vector2i(pos.x - 1, pos.y + ahead.y) if ahead.y != 0 else Vector2i(pos.x - 1 + ahead.x, pos.y)
+	if _is_valid_empty(board_state, left) and _is_valid_empty(board_state, ahead_left):
+		return { "from": pos, "to": left }
+
+	return {}
