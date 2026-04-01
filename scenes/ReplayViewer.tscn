@@ -1,4 +1,4 @@
-[gd_scene load_steps=2 format=3 uid="uid://rview01"]
+[gd_scene format=3 uid="uid://rview01"]
 
 [ext_resource type="Script" path="res://scripts/ui/replay_viewer.gd" id="1"]
 
@@ -28,6 +28,12 @@ grow_vertical = 0
 layout_mode = 2
 alignment = 1
 
+[node name="GoStartButton" type="Button" parent="Controls/HBox"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(50, 0)
+text = "<<"
+
 [node name="StepBackButton" type="Button" parent="Controls/HBox"]
 unique_name_in_owner = true
 layout_mode = 2
@@ -51,6 +57,12 @@ unique_name_in_owner = true
 layout_mode = 2
 custom_minimum_size = Vector2(50, 0)
 text = ">"
+
+[node name="GoEndButton" type="Button" parent="Controls/HBox"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(50, 0)
+text = ">>"
 
 [node name="SpeedSelect" type="OptionButton" parent="Controls/HBox"]
 unique_name_in_owner = true

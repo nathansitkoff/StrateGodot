@@ -10,8 +10,10 @@ signal back_pressed
 
 @onready var play_button: Button = %PlayButton
 @onready var pause_button: Button = %PauseButton
+@onready var go_start_button: Button = %GoStartButton
 @onready var step_back_button: Button = %StepBackButton
 @onready var step_fwd_button: Button = %StepFwdButton
+@onready var go_end_button: Button = %GoEndButton
 @onready var back_button: Button = %ReplayBackButton
 @onready var move_label: Label = %MoveLabel
 @onready var speed_select: OptionButton = %SpeedSelect
@@ -33,10 +35,12 @@ var _saved_current: PieceData.Team = PieceData.Team.RED
 
 
 func _ready() -> void:
+	go_start_button.pressed.connect(_on_go_start)
 	play_button.pressed.connect(_on_play)
 	pause_button.pressed.connect(_on_pause)
 	step_back_button.pressed.connect(_on_step_back)
 	step_fwd_button.pressed.connect(_on_step_fwd)
+	go_end_button.pressed.connect(_on_go_end)
 	back_button.pressed.connect(func() -> void:
 		_playing = false
 		_restore_state()
@@ -112,6 +116,19 @@ func _on_play() -> void:
 
 func _on_pause() -> void:
 	_playing = false
+
+
+func _on_go_start() -> void:
+	_playing = false
+	_current_move = 0
+	_apply_state()
+
+
+func _on_go_end() -> void:
+	_playing = false
+	if _recorder != null:
+		_current_move = _recorder.get_total_moves()
+		_apply_state()
 
 
 func _on_step_back() -> void:
