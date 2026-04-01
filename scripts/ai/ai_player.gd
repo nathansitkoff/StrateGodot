@@ -9,74 +9,6 @@ func _init(ai_team: PieceData.Team = PieceData.Team.BLUE) -> void:
 	_rng.randomize()
 
 
-# Returns the set of ranks an unrevealed enemy piece could possibly be.
-func _get_possible_ranks(piece_id: int, board_state: BoardState) -> Array[int]:
-	var enemy_team: PieceData.Team = get_enemy_team()
-
-	# Count how many of each rank are accounted for (revealed alive + captured)
-	var accounted: Dictionary = {}
-	for rank: int in PieceData.RANK_INFO:
-		accounted[rank] = 0
-
-	# Count revealed enemy pieces still on the board
-	for pid: int in board_state.pieces:
-		var p: Dictionary = board_state.pieces[pid]
-		if p["team"] == enemy_team and p["revealed"]:
-			accounted[p["rank"]] += 1
-
-	# Count captured enemy pieces
-	var captured: Array = GameManager.captured_pieces[enemy_team]
-	for rank: int in captured:
-		accounted[rank] += 1
-
-	# Build list of possible ranks
-	var possible: Array[int] = []
-	var piece_has_moved: bool = piece_id in has_moved
-
-	for rank: int in PieceData.RANK_INFO:
-		var total: int = PieceData.RANK_INFO[rank]["count"]
-		if accounted[rank] >= total:
-			continue
-		if piece_has_moved and (rank == PieceData.Rank.BOMB or rank == PieceData.Rank.FLAG):
-			continue
-		possible.append(rank)
-
-	return possible
-
-
-func _get_max_possible_rank(piece_id: int, board_state: BoardState) -> int:
-	var possible: Array[int] = _get_possible_ranks(piece_id, board_state)
-	if possible.size() == 0:
-		return PieceData.Rank.MARSHAL
-	var max_rank: int = possible[0]
-	for rank: int in possible:
-		if rank > max_rank:
-			max_rank = rank
-	return max_rank
-
-
-func _is_guaranteed_win(our_rank: PieceData.Rank, enemy_piece_id: int, board_state: BoardState) -> bool:
-	var possible: Array[int] = _get_possible_ranks(enemy_piece_id, board_state)
-	if possible.size() == 0:
-		return false
-	for rank: int in possible:
-		var result: Combat.Result = Combat.resolve(our_rank, rank)
-		if result != Combat.Result.ATTACKER_WINS:
-			return false
-	return true
-
-
-func _is_guaranteed_loss(our_rank: PieceData.Rank, enemy_piece_id: int, board_state: BoardState) -> bool:
-	var possible: Array[int] = _get_possible_ranks(enemy_piece_id, board_state)
-	if possible.size() == 0:
-		return false
-	for rank: int in possible:
-		var result: Combat.Result = Combat.resolve(our_rank, rank)
-		if result == Combat.Result.ATTACKER_WINS:
-			return false
-	return true
-
-
 func generate_setup(board_state: BoardState) -> void:
 	var valid_rows: Array[int] = board_state.get_setup_rows(team)
 	var back_row: int = valid_rows[0]
@@ -280,8 +212,8 @@ func _find_winning_attack(board_state: BoardState, my_pieces: Array[int]) -> Dic
 						best_value = value
 						best_move = { "from": piece["pos"], "to": target_pos }
 			else:
-				if _is_guaranteed_win(piece["rank"], target_id, board_state):
-					var max_rank: int = _get_max_possible_rank(target_id, board_state)
+				if is_guaranteed_win(piece["rank"], target_id, board_state):
+					var max_rank: int = get_max_possible_rank(target_id, board_state)
 					if max_rank > best_value:
 						best_value = max_rank
 						best_move = { "from": piece["pos"], "to": target_pos }
@@ -346,7 +278,7 @@ func _find_scout_probe(board_state: BoardState, my_pieces: Array[int], enemy_tea
 			if target_id != -1:
 				var target: Dictionary = board_state.pieces[target_id]
 				if target["team"] == enemy_team and not target["revealed"]:
-					if not _is_guaranteed_loss(piece["rank"], target_id, board_state):
+					if not is_guaranteed_loss(piece["rank"], target_id, board_state):
 						candidates.append({ "from": piece["pos"], "to": target_pos, "priority": 2 })
 			elif (target_pos.y - piece["pos"].y) * forward_dir > 0:
 				candidates.append({ "from": piece["pos"], "to": target_pos, "priority": 1 })
@@ -396,7 +328,7 @@ func _find_random_move(board_state: BoardState, my_pieces: Array[int]) -> Dictio
 					var result: Combat.Result = Combat.resolve(piece["rank"], target["rank"])
 					if result != Combat.Result.ATTACKER_WINS:
 						continue
-				elif _is_guaranteed_loss(piece["rank"], target_id, board_state):
+				elif is_guaranteed_loss(piece["rank"], target_id, board_state):
 					continue
 			all_moves.append({ "from": piece["pos"], "to": target_pos })
 

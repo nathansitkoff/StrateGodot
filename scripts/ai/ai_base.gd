@@ -84,6 +84,72 @@ func choose_move(_board_state: BoardState) -> Dictionary:
 	return {}
 
 
+# --- Shared deduction utilities ---
+
+
+func get_possible_ranks(piece_id: int, board_state: BoardState) -> Array[int]:
+	var enemy_team: PieceData.Team = get_enemy_team()
+
+	var accounted: Dictionary = {}
+	for rank: int in PieceData.RANK_INFO:
+		accounted[rank] = 0
+
+	for pid: int in board_state.pieces:
+		var p: Dictionary = board_state.pieces[pid]
+		if p["team"] == enemy_team and p["revealed"]:
+			accounted[p["rank"]] += 1
+
+	var captured: Array = GameManager.captured_pieces[enemy_team]
+	for rank: int in captured:
+		accounted[rank] += 1
+
+	var possible: Array[int] = []
+	var piece_has_moved: bool = piece_id in has_moved
+
+	for rank: int in PieceData.RANK_INFO:
+		var total: int = PieceData.RANK_INFO[rank]["count"]
+		if accounted[rank] >= total:
+			continue
+		if piece_has_moved and (rank == PieceData.Rank.BOMB or rank == PieceData.Rank.FLAG):
+			continue
+		possible.append(rank)
+
+	return possible
+
+
+func get_max_possible_rank(piece_id: int, board_state: BoardState) -> int:
+	var possible: Array[int] = get_possible_ranks(piece_id, board_state)
+	if possible.size() == 0:
+		return PieceData.Rank.MARSHAL
+	var max_rank: int = possible[0]
+	for rank: int in possible:
+		if rank > max_rank:
+			max_rank = rank
+	return max_rank
+
+
+func is_guaranteed_win(our_rank: PieceData.Rank, enemy_piece_id: int, board_state: BoardState) -> bool:
+	var possible: Array[int] = get_possible_ranks(enemy_piece_id, board_state)
+	if possible.size() == 0:
+		return false
+	for rank: int in possible:
+		var result: Combat.Result = Combat.resolve(our_rank, rank)
+		if result != Combat.Result.ATTACKER_WINS:
+			return false
+	return true
+
+
+func is_guaranteed_loss(our_rank: PieceData.Rank, enemy_piece_id: int, board_state: BoardState) -> bool:
+	var possible: Array[int] = get_possible_ranks(enemy_piece_id, board_state)
+	if possible.size() == 0:
+		return false
+	for rank: int in possible:
+		var result: Combat.Result = Combat.resolve(our_rank, rank)
+		if result == Combat.Result.ATTACKER_WINS:
+			return false
+	return true
+
+
 # --- Shared utilities for Monte Carlo / Rollout AIs ---
 
 

@@ -159,7 +159,7 @@ func _find_specific_attacker(board_state: BoardState, attacker_rank: PieceData.R
 	return {}
 
 
-# Rule 4: Attack revealed enemies where we win or tie
+# Rule 4: Attack revealed enemies where we win or tie, or guaranteed wins on unrevealed
 func _find_favorable_attack(board_state: BoardState, my_pieces: Array[int]) -> Dictionary:
 	var best_move: Dictionary = {}
 	var best_value: int = -1
@@ -174,19 +174,27 @@ func _find_favorable_attack(board_state: BoardState, my_pieces: Array[int]) -> D
 			if target_id == -1:
 				continue
 			var target: Dictionary = board_state.pieces[target_id]
-			if not target["revealed"]:
+			if target["team"] == team:
 				continue
-			var result: Combat.Result = Combat.resolve(piece["rank"], target["rank"])
-			if result == Combat.Result.ATTACKER_WINS or result == Combat.Result.BOTH_DIE:
-				var value: int = target["rank"] as int
-				if value > best_value:
-					best_value = value
-					best_move = { "from": piece["pos"], "to": target_pos }
+
+			if target["revealed"]:
+				var result: Combat.Result = Combat.resolve(piece["rank"], target["rank"])
+				if result == Combat.Result.ATTACKER_WINS or result == Combat.Result.BOTH_DIE:
+					var value: int = target["rank"] as int
+					if value > best_value:
+						best_value = value
+						best_move = { "from": piece["pos"], "to": target_pos }
+			else:
+				if is_guaranteed_win(piece["rank"], target_id, board_state):
+					var max_rank: int = get_max_possible_rank(target_id, board_state)
+					if max_rank > best_value:
+						best_value = max_rank
+						best_move = { "from": piece["pos"], "to": target_pos }
 
 	return best_move
 
 
-# Rule 5: Attack unrevealed enemies with expendable pieces (weakest first)
+# Rule 5: Attack unrevealed enemies with expendable pieces (weakest first), skip guaranteed losses
 func _find_probe_attack(board_state: BoardState, pieces_weakest_first: Array[int], enemy_team: PieceData.Team) -> Dictionary:
 	for piece_id: int in pieces_weakest_first:
 		var piece: Dictionary = board_state.pieces[piece_id]
@@ -201,7 +209,8 @@ func _find_probe_attack(board_state: BoardState, pieces_weakest_first: Array[int
 			if target_id != -1:
 				var target: Dictionary = board_state.pieces[target_id]
 				if target["team"] == enemy_team and not target["revealed"]:
-					return { "from": piece["pos"], "to": target_pos }
+					if not is_guaranteed_loss(piece["rank"], target_id, board_state):
+						return { "from": piece["pos"], "to": target_pos }
 	return {}
 
 
@@ -307,7 +316,7 @@ func _advance_forward(board_state: BoardState, pieces_weakest_first: Array[int])
 	return {}
 
 
-# Rule 10: Any valid move that isn't a known loss
+# Rule 10: Any valid move that isn't a known or deduced loss
 func _any_nonlosing_move(board_state: BoardState, my_pieces: Array[int]) -> Dictionary:
 	var all_moves: Array[Dictionary] = []
 	for piece_id: int in my_pieces:
@@ -323,6 +332,8 @@ func _any_nonlosing_move(board_state: BoardState, my_pieces: Array[int]) -> Dict
 					var result: Combat.Result = Combat.resolve(piece["rank"], target["rank"])
 					if result == Combat.Result.DEFENDER_WINS:
 						continue
+				elif is_guaranteed_loss(piece["rank"], target_id, board_state):
+					continue
 			all_moves.append({ "from": piece["pos"], "to": target_pos })
 
 	if all_moves.size() > 0:
