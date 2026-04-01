@@ -5,15 +5,14 @@ signal back_pressed
 @onready var game_count_input: SpinBox = %GameCountInput
 @onready var red_ai_select: OptionButton = %RedAISelect
 @onready var blue_ai_select: OptionButton = %BlueAISelect
+@onready var save_select: OptionButton = %SaveSelect
 @onready var start_button: Button = %StartButton
+@onready var stop_button: Button = %StopButton
 @onready var back_button: Button = %BackButton
-@onready var red_wins_label: Label = %RedWinsLabel
-@onready var blue_wins_label: Label = %BlueWinsLabel
-@onready var draws_label: Label = %DrawsLabel
 @onready var progress_label: Label = %ProgressLabel
 @onready var status_label: Label = %StatusLabel
-@onready var breakdown_label: Label = %BreakdownLabel
-@onready var save_select: OptionButton = %SaveSelect
+@onready var left_stats: Label = %LeftStats
+@onready var right_stats: Label = %RightStats
 
 var _running: bool = false
 var _red_wins: int = 0
@@ -39,7 +38,9 @@ const BATCH_SIZE: int = 1
 
 func _ready() -> void:
 	start_button.pressed.connect(_on_start)
+	stop_button.pressed.connect(_on_stop)
 	back_button.pressed.connect(func() -> void:
+		_running = false
 		visible = false
 		back_pressed.emit()
 	)
@@ -49,6 +50,7 @@ func _ready() -> void:
 	save_select.add_item("Don't Save")
 	save_select.add_item("Save Draws")
 	save_select.add_item("Save All")
+	stop_button.disabled = true
 
 
 func _on_start() -> void:
@@ -74,9 +76,14 @@ func _on_start() -> void:
 	_games_total = int(game_count_input.value)
 	_update_display()
 	start_button.disabled = true
-	back_button.disabled = true
+	stop_button.disabled = false
 	status_label.text = "Running..."
 	get_tree().create_timer(0.0).timeout.connect(_run_batch)
+
+
+func _on_stop() -> void:
+	_running = false
+	_finish()
 
 
 func _run_batch() -> void:
@@ -84,7 +91,7 @@ func _run_batch() -> void:
 		return
 
 	for i: int in range(BATCH_SIZE):
-		if _games_played >= _games_total:
+		if not _running or _games_played >= _games_total:
 			break
 
 		var red_ai_name: String = AIBase.AI_NAMES[red_ai_select.selected]
@@ -105,9 +112,8 @@ func _run_batch() -> void:
 
 		_total_turns += turns
 
-		# Save replay if configured
 		if rec != null:
-			var should_save: bool = (save_mode == 2) or (save_mode == 1 and reason == "timeout")
+			var should_save: bool = (save_mode == 2) or (save_mode == 1 and (reason == "timeout" or reason == "illegal_move"))
 			if should_save:
 				rec.finish_recording(reason, result["winner"], turns)
 				DirAccess.make_dir_recursive_absolute("user://replays")
@@ -162,45 +168,52 @@ func _run_batch() -> void:
 
 	_update_display()
 
-	if _games_played >= _games_total:
+	if not _running or _games_played >= _games_total:
 		_finish()
 	else:
 		get_tree().create_timer(0.0).timeout.connect(_run_batch)
 
 
 func _update_display() -> void:
-	red_wins_label.text = "Red Wins: %d" % _red_wins
-	blue_wins_label.text = "Blue Wins: %d" % _blue_wins
-	draws_label.text = "Draws: %d" % _draws
 	progress_label.text = "%d / %d" % [_games_played, _games_total]
 
 	var avg_turns: float = _total_turns / max(_games_played, 1) as float
 	var red_first_total: int = _red_first_red_wins + _red_first_blue_wins
 	var blue_first_total: int = _blue_first_red_wins + _blue_first_blue_wins
-	var lines: Array[String] = [
-		"First mover wins: %d  Second: %d" % [_first_mover_wins, _second_mover_wins],
+
+	var left: Array[String] = [
+		"Red Wins: %d" % _red_wins,
+		"Blue Wins: %d" % _blue_wins,
+		"Draws: %d" % _draws,
+		"",
+		"First mover wins: %d" % _first_mover_wins,
+		"Second mover wins: %d" % _second_mover_wins,
 		"Avg turns: %.0f" % avg_turns,
 		"",
 		"Red goes first (%d):" % red_first_total,
 		"  Red: %d  Blue: %d" % [_red_first_red_wins, _red_first_blue_wins],
 		"Blue goes first (%d):" % blue_first_total,
 		"  Red: %d  Blue: %d" % [_blue_first_red_wins, _blue_first_blue_wins],
-		"",
-		"Win by flag capture:",
+	]
+
+	var right: Array[String] = [
+		"Flag capture:",
 		"  Red: %d  Blue: %d" % [_flag_captures["red"], _flag_captures["blue"]],
-		"Win by no moves:",
+		"No moves:",
 		"  Red: %d  Blue: %d" % [_no_moves["red"], _no_moves["blue"]],
-		"Win by opponent stuck:",
+		"Opponent stuck:",
 		"  Red: %d  Blue: %d" % [_opponent_stuck["red"], _opponent_stuck["blue"]],
-		"Illegal moves by:",
+		"Illegal moves:",
 		"  Red: %d  Blue: %d" % [_illegal_moves["red"], _illegal_moves["blue"]],
 		"Timeouts: %d" % _timeouts,
 	]
-	breakdown_label.text = "\n".join(lines)
+
+	left_stats.text = "\n".join(left)
+	right_stats.text = "\n".join(right)
 
 
 func _finish() -> void:
 	_running = false
 	start_button.disabled = false
-	back_button.disabled = false
-	status_label.text = "Done!"
+	stop_button.disabled = true
+	status_label.text = "Done! (%d games)" % _games_played

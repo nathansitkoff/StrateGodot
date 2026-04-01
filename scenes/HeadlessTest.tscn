@@ -19,9 +19,9 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/margin_left = 300
+theme_override_constants/margin_left = 40
 theme_override_constants/margin_top = 20
-theme_override_constants/margin_right = 300
+theme_override_constants/margin_right = 40
 theme_override_constants/margin_bottom = 20
 
 [node name="VBox" type="VBoxContainer" parent="MarginContainer"]
@@ -35,51 +35,38 @@ horizontal_alignment = 1
 [node name="Sep1" type="HSeparator" parent="MarginContainer/VBox"]
 layout_mode = 2
 
-[node name="RedAIRow" type="HBoxContainer" parent="MarginContainer/VBox"]
+[node name="OptionsRow" type="HBoxContainer" parent="MarginContainer/VBox"]
 layout_mode = 2
 
-[node name="RedAILabel" type="Label" parent="MarginContainer/VBox/RedAIRow"]
+[node name="RedAILabel" type="Label" parent="MarginContainer/VBox/OptionsRow"]
 layout_mode = 2
-text = "Red AI:"
-size_flags_horizontal = 3
+text = "Red:"
 
-[node name="RedAISelect" type="OptionButton" parent="MarginContainer/VBox/RedAIRow"]
+[node name="RedAISelect" type="OptionButton" parent="MarginContainer/VBox/OptionsRow"]
 unique_name_in_owner = true
 layout_mode = 2
 
-[node name="BlueAIRow" type="HBoxContainer" parent="MarginContainer/VBox"]
+[node name="BlueAILabel" type="Label" parent="MarginContainer/VBox/OptionsRow"]
 layout_mode = 2
+text = "  Blue:"
 
-[node name="BlueAILabel" type="Label" parent="MarginContainer/VBox/BlueAIRow"]
-layout_mode = 2
-text = "Blue AI:"
-size_flags_horizontal = 3
-
-[node name="BlueAISelect" type="OptionButton" parent="MarginContainer/VBox/BlueAIRow"]
+[node name="BlueAISelect" type="OptionButton" parent="MarginContainer/VBox/OptionsRow"]
 unique_name_in_owner = true
 layout_mode = 2
 
-[node name="SaveRow" type="HBoxContainer" parent="MarginContainer/VBox"]
+[node name="SaveLabel" type="Label" parent="MarginContainer/VBox/OptionsRow"]
 layout_mode = 2
+text = "  Save:"
 
-[node name="SaveLabel" type="Label" parent="MarginContainer/VBox/SaveRow"]
-layout_mode = 2
-text = "Save replays:"
-size_flags_horizontal = 3
-
-[node name="SaveSelect" type="OptionButton" parent="MarginContainer/VBox/SaveRow"]
+[node name="SaveSelect" type="OptionButton" parent="MarginContainer/VBox/OptionsRow"]
 unique_name_in_owner = true
 layout_mode = 2
 
-[node name="CountRow" type="HBoxContainer" parent="MarginContainer/VBox"]
+[node name="CountLabel" type="Label" parent="MarginContainer/VBox/OptionsRow"]
 layout_mode = 2
+text = "  Games:"
 
-[node name="CountLabel" type="Label" parent="MarginContainer/VBox/CountRow"]
-layout_mode = 2
-text = "Games to play:"
-size_flags_horizontal = 3
-
-[node name="GameCountInput" type="SpinBox" parent="MarginContainer/VBox/CountRow"]
+[node name="GameCountInput" type="SpinBox" parent="MarginContainer/VBox/OptionsRow"]
 unique_name_in_owner = true
 layout_mode = 2
 min_value = 1
@@ -87,57 +74,64 @@ max_value = 10000
 value = 100
 step = 1
 
-[node name="StartButton" type="Button" parent="MarginContainer/VBox"]
+[node name="ButtonRow" type="HBoxContainer" parent="MarginContainer/VBox"]
+layout_mode = 2
+
+[node name="StartButton" type="Button" parent="MarginContainer/VBox/ButtonRow"]
 unique_name_in_owner = true
 layout_mode = 2
+size_flags_horizontal = 3
 custom_minimum_size = Vector2(0, 36)
-text = "Start Test"
+text = "Start"
+
+[node name="StopButton" type="Button" parent="MarginContainer/VBox/ButtonRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(0, 36)
+text = "Stop"
+disabled = true
+
+[node name="BackButton" type="Button" parent="MarginContainer/VBox/ButtonRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(0, 36)
+text = "Back to Menu"
+
+[node name="ProgressRow" type="HBoxContainer" parent="MarginContainer/VBox"]
+layout_mode = 2
+
+[node name="ProgressLabel" type="Label" parent="MarginContainer/VBox/ProgressRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+horizontal_alignment = 1
+
+[node name="StatusLabel" type="Label" parent="MarginContainer/VBox/ProgressRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+horizontal_alignment = 1
 
 [node name="Sep2" type="HSeparator" parent="MarginContainer/VBox"]
 layout_mode = 2
 
-[node name="ProgressLabel" type="Label" parent="MarginContainer/VBox"]
-unique_name_in_owner = true
-layout_mode = 2
-horizontal_alignment = 1
-
-[node name="RedWinsLabel" type="Label" parent="MarginContainer/VBox"]
-unique_name_in_owner = true
-layout_mode = 2
-text = "Red Wins: 0"
-horizontal_alignment = 1
-
-[node name="BlueWinsLabel" type="Label" parent="MarginContainer/VBox"]
-unique_name_in_owner = true
-layout_mode = 2
-text = "Blue Wins: 0"
-horizontal_alignment = 1
-
-[node name="DrawsLabel" type="Label" parent="MarginContainer/VBox"]
-unique_name_in_owner = true
-layout_mode = 2
-text = "Draws: 0"
-horizontal_alignment = 1
-
-[node name="StatusLabel" type="Label" parent="MarginContainer/VBox"]
-unique_name_in_owner = true
-layout_mode = 2
-horizontal_alignment = 1
-
-[node name="Sep3" type="HSeparator" parent="MarginContainer/VBox"]
-layout_mode = 2
-
-[node name="BreakdownLabel" type="Label" parent="MarginContainer/VBox"]
-unique_name_in_owner = true
-layout_mode = 2
-autowrap_mode = 2
-
-[node name="Spacer" type="Control" parent="MarginContainer/VBox"]
+[node name="StatsRow" type="HBoxContainer" parent="MarginContainer/VBox"]
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="BackButton" type="Button" parent="MarginContainer/VBox"]
+[node name="LeftStats" type="Label" parent="MarginContainer/VBox/StatsRow"]
 unique_name_in_owner = true
 layout_mode = 2
-custom_minimum_size = Vector2(0, 36)
-text = "Back to Menu"
+size_flags_horizontal = 3
+size_flags_vertical = 0
+
+[node name="Sep3" type="VSeparator" parent="MarginContainer/VBox/StatsRow"]
+layout_mode = 2
+
+[node name="RightStats" type="Label" parent="MarginContainer/VBox/StatsRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 0
