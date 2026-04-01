@@ -23,6 +23,14 @@ var _playing: bool = false
 var _play_timer: float = 0.0
 var _play_speed: float = 0.5
 
+# Saved state to restore when exiting replay
+var _saved_bs: BoardState = null
+var _saved_caps: Dictionary = {}
+var _saved_mode: GameManager.GameMode = GameManager.GameMode.LOCAL_2P
+var _saved_to: Vector2i = Vector2i(-1, -1)
+var _saved_move_team: PieceData.Team = PieceData.Team.RED
+var _saved_current: PieceData.Team = PieceData.Team.RED
+
 
 func _ready() -> void:
 	play_button.pressed.connect(_on_play)
@@ -31,6 +39,7 @@ func _ready() -> void:
 	step_fwd_button.pressed.connect(_on_step_fwd)
 	back_button.pressed.connect(func() -> void:
 		_playing = false
+		_restore_state()
 		visible = false
 		_hide_ui()
 		back_pressed.emit()
@@ -53,9 +62,30 @@ func load_replay(recorder: GameRecorder) -> void:
 	_recorder = recorder
 	_current_move = 0
 	_playing = false
+
+	# Save current GameManager state
+	_saved_bs = GameManager.board_state
+	_saved_caps = GameManager.captured_pieces
+	_saved_mode = GameManager.game_mode
+	_saved_to = GameManager.last_move_to
+	_saved_move_team = GameManager.last_move_team
+	_saved_current = GameManager.current_team
+
+	# Set mode so board shows all pieces
+	GameManager.game_mode = GameManager.GameMode.AI_VS_AI
+
 	_show_ui()
 	_update_info()
 	_apply_state()
+
+
+func _restore_state() -> void:
+	GameManager.board_state = _saved_bs
+	GameManager.captured_pieces = _saved_caps
+	GameManager.game_mode = _saved_mode
+	GameManager.last_move_to = _saved_to
+	GameManager.last_move_team = _saved_move_team
+	GameManager.current_team = _saved_current
 
 
 func _process(delta: float) -> void:
@@ -107,21 +137,12 @@ func _apply_state() -> void:
 	var caps: Dictionary = state["captured"]
 	var current_team: PieceData.Team = state["current_team"]
 
-	# Swap board state temporarily for rendering
-	var old_bs: BoardState = GameManager.board_state
-	var old_caps: Dictionary = GameManager.captured_pieces
-	var old_mode: GameManager.GameMode = GameManager.game_mode
-	var old_to: Vector2i = GameManager.last_move_to
-	var old_team: PieceData.Team = GameManager.last_move_team
-	var old_current: PieceData.Team = GameManager.current_team
-
+	# Set GameManager state persistently (board reads it at draw time)
 	GameManager.board_state = bs
 	GameManager.captured_pieces = caps
-	GameManager.game_mode = GameManager.GameMode.AI_VS_AI  # show all pieces
 	GameManager.last_move_to = state["last_to"]
 	GameManager.current_team = current_team
 
-	# Figure out who moved last
 	if _current_move > 0:
 		if current_team == PieceData.Team.RED:
 			GameManager.last_move_team = PieceData.Team.BLUE
@@ -129,6 +150,7 @@ func _apply_state() -> void:
 			GameManager.last_move_team = PieceData.Team.RED
 	else:
 		GameManager.last_move_team = current_team
+		GameManager.last_move_to = Vector2i(-1, -1)
 
 	turn_label.text = "%s's Turn — Move %d/%d" % [PieceData.get_team_name(current_team), _current_move, _recorder.get_total_moves()]
 	var color: Color = Color(0.9, 0.3, 0.3) if current_team == PieceData.Team.RED else Color(0.3, 0.4, 0.9)
@@ -139,14 +161,6 @@ func _apply_state() -> void:
 	board.refresh()
 
 	move_label.text = "Move %d / %d" % [_current_move, _recorder.get_total_moves()]
-
-	# Restore
-	GameManager.board_state = old_bs
-	GameManager.captured_pieces = old_caps
-	GameManager.game_mode = old_mode
-	GameManager.last_move_to = old_to
-	GameManager.last_move_team = old_team
-	GameManager.current_team = old_current
 
 
 func _update_info() -> void:
