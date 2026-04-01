@@ -288,10 +288,9 @@ func _is_valid_empty(board_state: BoardState, pos: Vector2i) -> bool:
 
 
 # Core movement helper: try to move piece toward target.
-# 1. Determine the best cardinal direction toward the target
-# 2. If that cell is a valid move, go there
-# 3. If blocked, deflect: try right if right and ahead-right are free, else left if left and ahead-left are free
-# 4. If no deflection works, return empty (this piece can't advance)
+# 1. Try primary direction (toward target)
+# 2. If blocked by empty/wall, try deflection (right then left with ahead check)
+# 3. If blocked by friendly piece, try to nudge the blocker out of the way
 # Uses get_valid_moves to ensure all game rules (including two-square) are respected.
 func _try_advance_toward(board_state: BoardState, piece_id: int, target: Vector2i) -> Dictionary:
 	var pos: Vector2i = board_state.pieces[piece_id]["pos"]
@@ -299,7 +298,6 @@ func _try_advance_toward(board_state: BoardState, piece_id: int, target: Vector2
 	var dx: int = target.x - pos.x
 	var dy: int = target.y - pos.y
 
-	# Determine primary direction: prefer vertical (forward/backward) unless target is purely lateral
 	var primary: Vector2i
 	if dy != 0:
 		primary = Vector2i(0, 1 if dy > 0 else -1)
@@ -314,19 +312,71 @@ func _try_advance_toward(board_state: BoardState, piece_id: int, target: Vector2
 	if primary_pos in valid and board_state.get_piece_at(primary_pos) == -1:
 		return { "from": pos, "to": primary_pos }
 
-	# Primary blocked — try deflection
+	# Try deflection
 	var ahead: Vector2i = primary
 
-	# Try right deflection: right is valid move AND ahead-right is free
 	var right: Vector2i = Vector2i(pos.x + 1, pos.y)
 	var ahead_right: Vector2i = Vector2i(pos.x + 1, pos.y + ahead.y) if ahead.y != 0 else Vector2i(pos.x + 1 + ahead.x, pos.y)
 	if right in valid and board_state.get_piece_at(right) == -1 and _is_valid_empty(board_state, ahead_right):
 		return { "from": pos, "to": right }
 
-	# Try left deflection: left is valid move AND ahead-left is free
 	var left: Vector2i = Vector2i(pos.x - 1, pos.y)
 	var ahead_left: Vector2i = Vector2i(pos.x - 1, pos.y + ahead.y) if ahead.y != 0 else Vector2i(pos.x - 1 + ahead.x, pos.y)
 	if left in valid and board_state.get_piece_at(left) == -1 and _is_valid_empty(board_state, ahead_left):
 		return { "from": pos, "to": left }
+
+	# Primary blocked by friendly piece — try nudge
+	if board_state.is_in_bounds(primary_pos) and not board_state.is_lake(primary_pos):
+		var blocker_id: int = board_state.get_piece_at(primary_pos)
+		if blocker_id != -1 and board_state.pieces[blocker_id]["team"] == team:
+			var visited: Dictionary = { piece_id: true }
+			var nudge: Dictionary = _try_nudge(board_state, blocker_id, primary, visited, 10)
+			if nudge.size() > 0:
+				return nudge
+
+	return {}
+
+
+# Recursively try to nudge a friendly piece out of the way.
+# The piece should step sideways. If it can't, and it's blocked by another
+# friendly piece in the push direction, recurse on that blocker.
+# Returns a move for whichever piece at the end of the chain can actually move.
+func _try_nudge(board_state: BoardState, blocker_id: int, push_dir: Vector2i, visited: Dictionary, depth: int) -> Dictionary:
+	if depth <= 0:
+		return {}
+	if blocker_id in visited:
+		return {}
+	visited[blocker_id] = true
+
+	var piece: Dictionary = board_state.pieces[blocker_id]
+	if not PieceData.can_move(piece["rank"]):
+		return {}
+
+	var pos: Vector2i = piece["pos"]
+	var valid: Array[Vector2i] = board_state.get_valid_moves(blocker_id)
+
+	# Try stepping sideways (perpendicular to push direction)
+	var sideways: Array[Vector2i] = []
+	if push_dir.x == 0:
+		# Pushing vertically, sidestep horizontally
+		sideways = [Vector2i(pos.x + 1, pos.y), Vector2i(pos.x - 1, pos.y)]
+	else:
+		# Pushing horizontally, sidestep vertically
+		sideways = [Vector2i(pos.x, pos.y + 1), Vector2i(pos.x, pos.y - 1)]
+
+	for side: Vector2i in sideways:
+		if side in valid and board_state.get_piece_at(side) == -1:
+			return { "from": pos, "to": side }
+
+	# Can't step aside — try pushing forward (same direction), maybe the next piece can move
+	var forward_pos: Vector2i = pos + push_dir
+	if board_state.is_in_bounds(forward_pos) and not board_state.is_lake(forward_pos):
+		# If forward is empty, blocker can move forward
+		if forward_pos in valid and board_state.get_piece_at(forward_pos) == -1:
+			return { "from": pos, "to": forward_pos }
+		# If forward is another friendly piece, recurse
+		var next_blocker: int = board_state.get_piece_at(forward_pos)
+		if next_blocker != -1 and board_state.pieces[next_blocker]["team"] == team:
+			return _try_nudge(board_state, next_blocker, push_dir, visited, depth - 1)
 
 	return {}
