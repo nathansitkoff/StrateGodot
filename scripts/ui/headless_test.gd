@@ -13,6 +13,7 @@ signal back_pressed
 @onready var progress_label: Label = %ProgressLabel
 @onready var status_label: Label = %StatusLabel
 @onready var breakdown_label: Label = %BreakdownLabel
+@onready var save_select: OptionButton = %SaveSelect
 
 var _running: bool = false
 var _red_wins: int = 0
@@ -44,6 +45,9 @@ func _ready() -> void:
 	for ai_name: String in AIBase.AI_NAMES:
 		red_ai_select.add_item(ai_name)
 		blue_ai_select.add_item(ai_name)
+	save_select.add_item("Don't Save")
+	save_select.add_item("Save Draws")
+	save_select.add_item("Save All")
 
 
 func _on_start() -> void:
@@ -81,15 +85,31 @@ func _run_batch() -> void:
 		if _games_played >= _games_total:
 			break
 
+		var red_ai_name: String = AIBase.AI_NAMES[red_ai_select.selected]
+		var blue_ai_name: String = AIBase.AI_NAMES[blue_ai_select.selected]
 		var ai_red: AIBase = AIBase.create(red_ai_select.selected, PieceData.Team.RED)
 		var ai_blue: AIBase = AIBase.create(blue_ai_select.selected, PieceData.Team.BLUE)
 
 		var starting: PieceData.Team = PieceData.Team.RED if _games_played % 2 == 0 else PieceData.Team.BLUE
-		var result: Dictionary = GameManager.run_headless_game(ai_red, ai_blue, starting)
+		var save_mode: int = save_select.selected
+		var rec: GameRecorder = null
+		if save_mode > 0:
+			rec = GameRecorder.new()
+			rec.start_recording("Headless", red_ai_name, blue_ai_name, starting)
+
+		var result: Dictionary = GameManager.run_headless_game(ai_red, ai_blue, starting, rec)
 		var reason: String = result["reason"]
 		var turns: int = result["turns"]
 
 		_total_turns += turns
+
+		# Save replay if configured
+		if rec != null:
+			var should_save: bool = (save_mode == 2) or (save_mode == 1 and reason == "timeout")
+			if should_save:
+				rec.finish_recording(reason, result["winner"], turns)
+				DirAccess.make_dir_recursive_absolute("user://replays")
+				rec.save_to_file(GameRecorder.generate_filename("Headless", red_ai_name, blue_ai_name))
 
 		if reason == "timeout":
 			_draws += 1

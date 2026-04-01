@@ -30,6 +30,7 @@ var last_move_from: Vector2i = Vector2i(-1, -1)
 var last_move_to: Vector2i = Vector2i(-1, -1)
 var last_move_team: PieceData.Team = PieceData.Team.RED
 var first_team: PieceData.Team = PieceData.Team.RED
+var recorder: GameRecorder = null
 var captured_pieces: Dictionary = {
 	PieceData.Team.RED: [] as Array[PieceData.Rank],
 	PieceData.Team.BLUE: [] as Array[PieceData.Rank],
@@ -144,6 +145,9 @@ func execute_move(from: Vector2i, to: Vector2i) -> void:
 	last_move_to = to
 	last_move_team = current_team
 
+	if recorder != null:
+		recorder.record_move(from, to)
+
 	var move_result: Dictionary = apply_move(from, to, board_state, captured_pieces)
 
 	if move_result["combat"]:
@@ -183,7 +187,7 @@ func _end_game(winning_team: PieceData.Team) -> void:
 
 
 # Run a complete game headlessly. Returns a result dictionary.
-func run_headless_game(ai_red: AIBase, ai_blue: AIBase, starting_team: PieceData.Team = PieceData.Team.RED) -> Dictionary:
+func run_headless_game(ai_red: AIBase, ai_blue: AIBase, starting_team: PieceData.Team = PieceData.Team.RED, game_recorder: GameRecorder = null) -> Dictionary:
 	var bs: BoardState = BoardState.new()
 	var caps: Dictionary = {
 		PieceData.Team.RED: [] as Array[PieceData.Rank],
@@ -213,6 +217,9 @@ func run_headless_game(ai_red: AIBase, ai_blue: AIBase, starting_team: PieceData
 	ai_red.generate_setup(bs)
 	ai_blue.generate_setup(bs)
 
+	if game_recorder != null:
+		game_recorder.record_placements_from_board(bs)
+
 	current_team = starting_team
 	current_phase = GamePhase.PLAY
 
@@ -237,6 +244,9 @@ func run_headless_game(ai_red: AIBase, ai_blue: AIBase, starting_team: PieceData
 		last_move_from = from
 		last_move_to = to
 		last_move_team = current_team
+
+		if game_recorder != null:
+			game_recorder.record_move(from, to)
 
 		var move_result: Dictionary = apply_move(from, to, bs, caps)
 

@@ -10,11 +10,16 @@ extends Control
 @onready var game_over: ColorRect = %GameOver
 @onready var game_options: ColorRect = %GameOptions
 @onready var headless_test: ColorRect = %HeadlessTest
+@onready var replay_browser: ColorRect = %ReplayBrowser
+@onready var replay_viewer: Control = %ReplayViewer
 @onready var main_menu: ColorRect = %MainMenu
 
 var play_controller: Node
 var ai_players: Dictionary = {}
 var _pending_mode: GameManager.GameMode = GameManager.GameMode.LOCAL_2P
+var _recorder: GameRecorder = null
+var _red_ai_name: String = "Human"
+var _blue_ai_name: String = "Human"
 
 const AI_MOVE_DELAY: float = 0.5
 
@@ -30,8 +35,12 @@ func _ready() -> void:
 	game_over.play_again_pressed.connect(_on_play_again)
 	main_menu.mode_selected.connect(_on_mode_selected)
 	main_menu.headless_selected.connect(_on_headless_selected)
+	main_menu.replays_selected.connect(_on_replays_selected)
 	game_options.options_confirmed.connect(_on_options_confirmed)
 	headless_test.back_pressed.connect(_on_headless_back)
+	replay_browser.back_pressed.connect(_on_replay_browser_back)
+	replay_browser.replay_selected.connect(_on_replay_selected)
+	replay_viewer.back_pressed.connect(_on_replay_viewer_back)
 
 	play_controller = Node.new()
 	play_controller.set_script(preload("res://scripts/ui/play_controller.gd"))
@@ -44,16 +53,35 @@ func _on_mode_selected(mode: GameManager.GameMode) -> void:
 	game_options.show_options(mode)
 
 
+func _get_mode_name() -> String:
+	match _pending_mode:
+		GameManager.GameMode.LOCAL_2P: return "Local2P"
+		GameManager.GameMode.VS_AI: return "VsAI"
+		GameManager.GameMode.AI_TEST: return "AITest"
+		GameManager.GameMode.AI_VS_AI: return "AIvsAI"
+		_: return "Unknown"
+
+
 func _on_options_confirmed(first_team: PieceData.Team, red_ai_type: int, blue_ai_type: int) -> void:
 	ai_players.clear()
+	_red_ai_name = "Human"
+	_blue_ai_name = "Human"
 	match _pending_mode:
 		GameManager.GameMode.VS_AI:
 			ai_players[PieceData.Team.BLUE] = AIBase.create(blue_ai_type, PieceData.Team.BLUE)
+			_blue_ai_name = AIBase.AI_NAMES[blue_ai_type]
 		GameManager.GameMode.AI_TEST:
 			ai_players[PieceData.Team.BLUE] = AIBase.create(blue_ai_type, PieceData.Team.BLUE)
+			_blue_ai_name = AIBase.AI_NAMES[blue_ai_type]
 		GameManager.GameMode.AI_VS_AI:
 			ai_players[PieceData.Team.RED] = AIBase.create(red_ai_type, PieceData.Team.RED)
 			ai_players[PieceData.Team.BLUE] = AIBase.create(blue_ai_type, PieceData.Team.BLUE)
+			_red_ai_name = AIBase.AI_NAMES[red_ai_type]
+			_blue_ai_name = AIBase.AI_NAMES[blue_ai_type]
+
+	_recorder = GameRecorder.new()
+	_recorder.start_recording(_get_mode_name(), _red_ai_name, _blue_ai_name, first_team)
+	GameManager.recorder = _recorder
 	GameManager.start_game(_pending_mode, first_team)
 
 
@@ -84,6 +112,9 @@ func _on_phase_changed(phase: GameManager.GamePhase) -> void:
 			else:
 				turn_switch.show_turn(PieceData.Team.BLUE, false)
 		GameManager.GamePhase.PLAY:
+			# Record initial placements
+			if _recorder != null:
+				_recorder.record_placements_from_board(GameManager.board_state)
 			setup_phase.visible = false
 			hud.visible = true
 			left_hud.visible = true
@@ -141,6 +172,15 @@ func _on_combat_occurred(combat_info: Dictionary) -> void:
 func _on_game_ended(winner: PieceData.Team) -> void:
 	board.refresh()
 	_update_remaining()
+	# Save replay
+	if _recorder != null:
+		var result_str: String = "flag_captured"
+		if not GameManager.board_state.has_movable_pieces(PieceData.Team.RED if winner == PieceData.Team.BLUE else PieceData.Team.BLUE):
+			result_str = "opponent_stuck"
+		_recorder.finish_recording(result_str, winner, _recorder.get_total_moves())
+		DirAccess.make_dir_recursive_absolute("user://replays")
+		var filepath: String = GameRecorder.generate_filename(_get_mode_name(), _red_ai_name, _blue_ai_name)
+		_recorder.save_to_file(filepath)
 	game_over.show_winner(winner)
 
 
@@ -157,6 +197,8 @@ func _on_play_again() -> void:
 	turn_bar.visible = false
 	board.offset_left = 0
 	board.offset_top = 0
+	_recorder = null
+	GameManager.recorder = null
 	main_menu.visible = true
 
 
@@ -165,6 +207,24 @@ func _on_headless_selected() -> void:
 
 
 func _on_headless_back() -> void:
+	main_menu.visible = true
+
+
+func _on_replays_selected() -> void:
+	replay_browser.show_browser()
+
+
+func _on_replay_browser_back() -> void:
+	main_menu.visible = true
+
+
+func _on_replay_selected(filepath: String) -> void:
+	var recorder: GameRecorder = GameRecorder.load_from_file(filepath)
+	if recorder != null:
+		replay_viewer.load_replay(recorder)
+
+
+func _on_replay_viewer_back() -> void:
 	main_menu.visible = true
 
 

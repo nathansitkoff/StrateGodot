@@ -2,12 +2,14 @@ extends ColorRect
 
 signal mode_selected(mode: GameManager.GameMode)
 signal headless_selected
+signal replays_selected
 
 @onready var local_button: Button = %LocalButton
 @onready var ai_button: Button = %AIButton
 @onready var ai_test_button: Button = %AITestButton
 @onready var ai_vs_ai_button: Button = %AIvsAIButton
 @onready var headless_button: Button = %HeadlessButton
+@onready var replays_button: Button = %ReplaysButton
 
 
 func _ready() -> void:
@@ -30,4 +32,8 @@ func _ready() -> void:
 	headless_button.pressed.connect(func() -> void:
 		visible = false
 		headless_selected.emit()
+	)
+	replays_button.pressed.connect(func() -> void:
+		visible = false
+		replays_selected.emit()
 	)
