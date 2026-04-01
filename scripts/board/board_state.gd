@@ -15,6 +15,9 @@ var grid: Array[Array] = []
 # pieces[piece_id] = { "rank": Rank, "team": Team, "revealed": bool, "pos": Vector2i }
 var pieces: Dictionary = {}
 var _next_id: int = 0
+# Track last moves per piece for two-square rule: piece_id -> Array of recent positions
+# Each entry is the position BEFORE the move. We store up to 4 positions to detect 3 back-and-forth moves.
+var _move_history: Dictionary = {}
 
 
 func _init() -> void:
@@ -34,6 +37,7 @@ func reset() -> void:
 	_clear_grid()
 	pieces.clear()
 	_next_id = 0
+	_move_history.clear()
 
 
 func is_lake(pos: Vector2i) -> bool:
@@ -67,12 +71,39 @@ func add_piece(rank: PieceData.Rank, team: PieceData.Team, pos: Vector2i) -> int
 	return id
 
 
+# Check if moving piece_id to target would violate the two-square rule.
+# The rule: a piece cannot move back and forth between the same two squares
+# for more than 3 consecutive moves. History stores the positions BEFORE each move.
+# If history is [A, B, A, B] and piece is currently at A wanting to go to B,
+# that would be the 4th oscillation — disallowed after 3.
+# Pattern: history[-3]=A, history[-2]=B, history[-1]=A, current=B, target=A → block
+func _violates_two_square_rule(piece_id: int, target: Vector2i) -> bool:
+	if piece_id not in _move_history:
+		return false
+	var history: Array = _move_history[piece_id]
+	if history.size() < 3:
+		return false
+	# Current position
+	var current: Vector2i = pieces[piece_id]["pos"]
+	# Check: did the piece oscillate between current and target for the last 3 moves?
+	# History stores positions BEFORE each move.
+	# If the last 3 entries alternate between target and current:
+	# history[-3] = target, history[-2] = current, history[-1] = target
+	# And the piece is now at current, wanting to go to target → that's the 4th swing → block
+	var h: Array = history
+	var n: int = h.size()
+	if h[n - 1] == target and h[n - 2] == current and h[n - 3] == target:
+		return true
+	return false
+
+
 func remove_piece(piece_id: int) -> void:
 	if piece_id not in pieces:
 		return
 	var pos: Vector2i = pieces[piece_id]["pos"]
 	grid[pos.x][pos.y] = -1
 	pieces.erase(piece_id)
+	_move_history.erase(piece_id)
 
 
 func move_piece(piece_id: int, to: Vector2i) -> void:
@@ -82,6 +113,14 @@ func move_piece(piece_id: int, to: Vector2i) -> void:
 	grid[from.x][from.y] = -1
 	grid[to.x][to.y] = piece_id
 	pieces[piece_id]["pos"] = to
+
+	# Record move history for two-square rule
+	if piece_id not in _move_history:
+		_move_history[piece_id] = []
+	_move_history[piece_id].append(from)
+	# Keep only last 4 positions (enough to detect 3 back-and-forth)
+	if _move_history[piece_id].size() > 4:
+		_move_history[piece_id].pop_front()
 
 
 func get_valid_moves(piece_id: int) -> Array[Vector2i]:
@@ -116,7 +155,8 @@ func get_valid_moves(piece_id: int) -> Array[Vector2i]:
 				break
 			var occupant: int = grid[target.x][target.y]
 			if occupant == -1:
-				moves.append(target)
+				if not _violates_two_square_rule(piece_id, target):
+					moves.append(target)
 			else:
 				# Can attack enemy pieces, but can't move through or onto friendly
 				if pieces[occupant]["team"] != team:
@@ -156,6 +196,8 @@ func clone() -> BoardState:
 			"pos": Vector2i(p["pos"].x, p["pos"].y),
 		}
 	bs._next_id = _next_id
+	for piece_id: int in _move_history:
+		bs._move_history[piece_id] = _move_history[piece_id].duplicate()
 	return bs
 
 
