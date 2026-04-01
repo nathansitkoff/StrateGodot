@@ -111,7 +111,9 @@ static func load_from_file(filepath: String) -> GameRecorder:
 
 static func generate_filename(mode: String, red_ai: String, blue_ai: String) -> String:
 	var ts: String = Time.get_datetime_string_from_system().replace(":", "-").replace("T", "_")
-	return "user://replays/%s_%s_vs_%s_%s.json" % [mode, red_ai, blue_ai, ts]
+	var safe_red: String = red_ai.replace(" ", "-")
+	var safe_blue: String = blue_ai.replace(" ", "-")
+	return "user://replays/%s_%s_vs_%s_%s.json" % [mode, safe_red, safe_blue, ts]
 
 
 func get_total_moves() -> int:
