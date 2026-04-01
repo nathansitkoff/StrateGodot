@@ -30,18 +30,21 @@ func _refresh_list() -> void:
 	if dir == null:
 		return
 
-	var files: Array[String] = []
+	var files: Array[Dictionary] = []
 	dir.list_dir_begin()
 	var filename: String = dir.get_next()
 	while filename != "":
 		if filename.ends_with(".json"):
-			files.append(filename)
+			var path: String = "user://replays/" + filename
+			var mod_time: int = FileAccess.get_modified_time(path)
+			files.append({ "name": filename, "time": mod_time })
 		filename = dir.get_next()
 	dir.list_dir_end()
 
-	# Sort newest first
-	files.sort()
-	files.reverse()
+	# Sort newest first by modification time
+	files.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		return a["time"] > b["time"]
+	)
 
 	if files.size() == 0:
 		var label: Label = Label.new()
@@ -50,11 +53,11 @@ func _refresh_list() -> void:
 		replay_list.add_child(label)
 		return
 
-	for file: String in files:
+	for entry: Dictionary in files:
 		var btn: Button = Button.new()
-		btn.text = file.replace(".json", "")
+		btn.text = entry["name"].replace(".json", "")
 		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		var filepath: String = "user://replays/" + file
+		var filepath: String = "user://replays/" + entry["name"]
 		btn.pressed.connect(func() -> void:
 			visible = false
 			replay_selected.emit(filepath)
