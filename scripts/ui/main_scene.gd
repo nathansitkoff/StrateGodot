@@ -13,6 +13,7 @@ extends Control
 @onready var replay_browser: ColorRect = %ReplayBrowser
 @onready var replay_viewer: Control = %ReplayViewer
 @onready var main_menu: ColorRect = %MainMenu
+@onready var quit_button: Button = %QuitButton
 
 var play_controller: Node
 var ai_players: Dictionary = {}
@@ -46,6 +47,16 @@ func _ready() -> void:
 	play_controller.set_script(preload("res://scripts/ui/play_controller.gd"))
 	add_child(play_controller)
 	play_controller.setup(board)
+	quit_button.pressed.connect(_exit_to_menu)
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey:
+		var key: InputEventKey = event as InputEventKey
+		if key.pressed and key.keycode == KEY_ESCAPE:
+			if main_menu.visible or headless_test.visible or replay_browser.visible:
+				return
+			_exit_to_menu()
 
 
 func _on_mode_selected(mode: GameManager.GameMode) -> void:
@@ -193,13 +204,23 @@ func _on_turn_switch_acknowledged() -> void:
 
 
 func _on_play_again() -> void:
+	_exit_to_menu()
+
+
+func _exit_to_menu() -> void:
 	hud.visible = false
 	left_hud.visible = false
 	turn_bar.visible = false
+	setup_phase.visible = false
+	turn_switch.visible = false
+	game_over.visible = false
+	game_options.visible = false
 	board.offset_left = 0
 	board.offset_top = 0
+	board.offset_bottom = 0
 	_recorder = null
 	GameManager.recorder = null
+	GameManager.current_phase = GameManager.GamePhase.MENU
 	main_menu.visible = true
 
 

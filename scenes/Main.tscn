@@ -29,15 +29,23 @@ anchors_preset = 10
 anchor_right = 1.0
 offset_bottom = 36
 grow_horizontal = 2
-mouse_filter = 2
 visible = false
 
-[node name="TurnLabel" type="Label" parent="TurnBar"]
+[node name="HBox" type="HBoxContainer" parent="TurnBar"]
+layout_mode = 2
+
+[node name="TurnLabel" type="Label" parent="TurnBar/HBox"]
 unique_name_in_owner = true
 layout_mode = 2
+size_flags_horizontal = 3
 text = "RED's Turn"
 horizontal_alignment = 1
 vertical_alignment = 1
+
+[node name="QuitButton" type="Button" parent="TurnBar/HBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Quit"
 
 [node name="Board" parent="." instance=ExtResource("2")]
 unique_name_in_owner = true
