@@ -1,7 +1,7 @@
 class_name AIBase
 extends RefCounted
 
-const AI_NAMES: Array[String] = ["Heuristic", "Monte Carlo", "Rollout"]
+const AI_NAMES: Array[String] = ["Heuristic", "Monte Carlo", "Rollout", "Greedy"]
 
 var team: PieceData.Team = PieceData.Team.BLUE
 # Track enemy piece IDs that have moved at least once
@@ -31,6 +31,8 @@ static func create(type_index: int, ai_team: PieceData.Team) -> AIBase:
 			script_path = "res://scripts/ai/monte_carlo_ai.gd"
 		2:
 			script_path = "res://scripts/ai/rollout_ai.gd"
+		3:
+			script_path = "res://scripts/ai/greedy_ai.gd"
 		_:
 			script_path = "res://scripts/ai/ai_player.gd"
 	var ai: AIBase = load(script_path).new(ai_team)
