@@ -192,7 +192,7 @@ func _route_toward_revealed(board_state: BoardState, mover_rank: PieceData.Rank,
 				closest_dist = d
 				closest_target = t
 
-		var step: Dictionary = _try_advance_toward(board_state, piece["pos"], closest_target)
+		var step: Dictionary = _try_advance_toward(board_state, piece_id, closest_target)
 		if step.size() > 0:
 			var new_dist: int = _manhattan(step["to"], closest_target)
 			if new_dist < best_dist:
@@ -227,7 +227,7 @@ func _move_toward_unrevealed(board_state: BoardState, pieces_weakest_first: Arra
 				closest_dist = d
 				closest = ep
 
-		var step: Dictionary = _try_advance_toward(board_state, piece["pos"], closest)
+		var step: Dictionary = _try_advance_toward(board_state, piece_id, closest)
 		if step.size() > 0:
 			return step
 
@@ -241,10 +241,10 @@ func _advance_forward(board_state: BoardState, pieces_weakest_first: Array[int])
 		var piece: Dictionary = board_state.pieces[piece_id]
 		if not PieceData.can_move(piece["rank"]):
 			continue
-		var pos: Vector2i = piece["pos"]
 		# Use a far-away target straight ahead to drive forward movement
+		var pos: Vector2i = piece["pos"]
 		var target: Vector2i = Vector2i(pos.x, pos.y + forward * 20)
-		var step: Dictionary = _try_advance_toward(board_state, pos, target)
+		var step: Dictionary = _try_advance_toward(board_state, piece_id, target)
 		if step.size() > 0:
 			return step
 
@@ -287,48 +287,46 @@ func _is_valid_empty(board_state: BoardState, pos: Vector2i) -> bool:
 	return board_state.is_valid_cell(pos) and board_state.get_piece_at(pos) == -1
 
 
-# Core movement helper: try to move from pos toward target.
+# Core movement helper: try to move piece toward target.
 # 1. Determine the best cardinal direction toward the target
-# 2. If that cell is free, go there
+# 2. If that cell is a valid move, go there
 # 3. If blocked, deflect: try right if right and ahead-right are free, else left if left and ahead-left are free
 # 4. If no deflection works, return empty (this piece can't advance)
-func _try_advance_toward(board_state: BoardState, pos: Vector2i, target: Vector2i) -> Dictionary:
-	var forward: int = _get_forward_dir()
+# Uses get_valid_moves to ensure all game rules (including two-square) are respected.
+func _try_advance_toward(board_state: BoardState, piece_id: int, target: Vector2i) -> Dictionary:
+	var pos: Vector2i = board_state.pieces[piece_id]["pos"]
+	var valid: Array[Vector2i] = board_state.get_valid_moves(piece_id)
 	var dx: int = target.x - pos.x
 	var dy: int = target.y - pos.y
 
 	# Determine primary direction: prefer vertical (forward/backward) unless target is purely lateral
 	var primary: Vector2i
 	if dy != 0:
-		# Move vertically toward target
 		primary = Vector2i(0, 1 if dy > 0 else -1)
 	elif dx != 0:
-		# Target is on same row, move horizontally
 		primary = Vector2i(1 if dx > 0 else -1, 0)
 	else:
-		# Already at target
 		return {}
 
 	var primary_pos: Vector2i = pos + primary
 
 	# Try primary direction
-	if _is_valid_empty(board_state, primary_pos):
+	if primary_pos in valid and board_state.get_piece_at(primary_pos) == -1:
 		return { "from": pos, "to": primary_pos }
 
 	# Primary blocked — try deflection
-	# Determine "ahead" direction for deflection check (the direction we want to go)
 	var ahead: Vector2i = primary
 
-	# Try right deflection: right cell free AND ahead-right cell free
+	# Try right deflection: right is valid move AND ahead-right is free
 	var right: Vector2i = Vector2i(pos.x + 1, pos.y)
 	var ahead_right: Vector2i = Vector2i(pos.x + 1, pos.y + ahead.y) if ahead.y != 0 else Vector2i(pos.x + 1 + ahead.x, pos.y)
-	if _is_valid_empty(board_state, right) and _is_valid_empty(board_state, ahead_right):
+	if right in valid and board_state.get_piece_at(right) == -1 and _is_valid_empty(board_state, ahead_right):
 		return { "from": pos, "to": right }
 
-	# Try left deflection: left cell free AND ahead-left cell free
+	# Try left deflection: left is valid move AND ahead-left is free
 	var left: Vector2i = Vector2i(pos.x - 1, pos.y)
 	var ahead_left: Vector2i = Vector2i(pos.x - 1, pos.y + ahead.y) if ahead.y != 0 else Vector2i(pos.x - 1 + ahead.x, pos.y)
-	if _is_valid_empty(board_state, left) and _is_valid_empty(board_state, ahead_left):
+	if left in valid and board_state.get_piece_at(left) == -1 and _is_valid_empty(board_state, ahead_left):
 		return { "from": pos, "to": left }
 
 	return {}

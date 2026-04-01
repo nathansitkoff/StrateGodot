@@ -79,6 +79,23 @@ func _register_unplaced_as_captured(team_to_check: PieceData.Team) -> void:
 # Apply a move on a given board state and captured pieces dict.
 # Returns a result dict: { "combat": bool, "combat_info": Dictionary, "flag_captured": bool, "winner": Team }
 # This is the single source of truth for move/combat logic.
+func validate_move(from: Vector2i, to: Vector2i, bs: BoardState) -> bool:
+	var piece_id: int = bs.get_piece_at(from)
+	if piece_id == -1:
+		push_error("ILLEGAL MOVE: no piece at %s" % str(from))
+		return false
+	var valid_moves: Array[Vector2i] = bs.get_valid_moves(piece_id)
+	if to not in valid_moves:
+		var piece_info: Dictionary = bs.pieces[piece_id]
+		push_error("ILLEGAL MOVE: piece %d (%s %s) at %s cannot move to %s. Valid: %s" % [
+			piece_id,
+			PieceData.get_team_name(piece_info["team"]),
+			PieceData.get_rank_name(piece_info["rank"]),
+			str(from), str(to), str(valid_moves)])
+		return false
+	return true
+
+
 func apply_move(from: Vector2i, to: Vector2i, bs: BoardState, caps: Dictionary) -> Dictionary:
 	var piece_id: int = bs.get_piece_at(from)
 	var result: Dictionary = { "combat": false, "flag_captured": false }
@@ -137,8 +154,7 @@ func apply_move(from: Vector2i, to: Vector2i, bs: BoardState, caps: Dictionary) 
 
 
 func execute_move(from: Vector2i, to: Vector2i) -> void:
-	var piece_id: int = board_state.get_piece_at(from)
-	if piece_id == -1:
+	if not validate_move(from, to, board_state):
 		return
 
 	last_move_from = from
@@ -249,6 +265,11 @@ func run_headless_game(ai_red: AIBase, ai_blue: AIBase, starting_team: PieceData
 		last_move_to = to
 		last_move_team = current_team
 
+		if not validate_move(from, to, bs):
+			result_reason = "illegal_move"
+			game_over_flag = true
+			break
+
 		if game_recorder != null:
 			game_recorder.record_move(from, to)
 
@@ -297,4 +318,5 @@ func run_headless_game(ai_red: AIBase, ai_blue: AIBase, starting_team: PieceData
 		"winner": result_winner,
 		"reason": result_reason,
 		"turns": turn_count,
+		"last_team": last_move_team,
 	}

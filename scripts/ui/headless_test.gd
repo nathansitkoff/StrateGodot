@@ -30,6 +30,7 @@ var _blue_first_blue_wins: int = 0
 var _flag_captures: Dictionary = { "red": 0, "blue": 0 }
 var _no_moves: Dictionary = { "red": 0, "blue": 0 }
 var _opponent_stuck: Dictionary = { "red": 0, "blue": 0 }
+var _illegal_moves: Dictionary = { "red": 0, "blue": 0 }
 var _timeouts: int = 0
 var _total_turns: int = 0
 
@@ -67,6 +68,7 @@ func _on_start() -> void:
 	_flag_captures = { "red": 0, "blue": 0 }
 	_no_moves = { "red": 0, "blue": 0 }
 	_opponent_stuck = { "red": 0, "blue": 0 }
+	_illegal_moves = { "red": 0, "blue": 0 }
 	_timeouts = 0
 	_total_turns = 0
 	_games_total = int(game_count_input.value)
@@ -114,6 +116,13 @@ func _run_batch() -> void:
 		if reason == "timeout":
 			_draws += 1
 			_timeouts += 1
+			_games_played += 1
+			continue
+
+		if reason == "illegal_move":
+			_draws += 1
+			var offender: String = "red" if result["last_team"] == PieceData.Team.RED else "blue"
+			_illegal_moves[offender] += 1
 			_games_played += 1
 			continue
 
@@ -183,6 +192,8 @@ func _update_display() -> void:
 		"  Red: %d  Blue: %d" % [_no_moves["red"], _no_moves["blue"]],
 		"Win by opponent stuck:",
 		"  Red: %d  Blue: %d" % [_opponent_stuck["red"], _opponent_stuck["blue"]],
+		"Illegal moves by:",
+		"  Red: %d  Blue: %d" % [_illegal_moves["red"], _illegal_moves["blue"]],
 		"Timeouts: %d" % _timeouts,
 	]
 	breakdown_label.text = "\n".join(lines)
