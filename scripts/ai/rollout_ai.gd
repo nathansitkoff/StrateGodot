@@ -62,15 +62,15 @@ func choose_move(board_state: BoardState) -> Dictionary:
 
 
 func _run_rollout(world: BoardState, caps: Dictionary) -> float:
-	# Create temporary HeuristicAI players for the rollout
-	var sim_red: HeuristicAI = HeuristicAI.new(PieceData.Team.RED)
-	var sim_blue: HeuristicAI = HeuristicAI.new(PieceData.Team.BLUE)
+	# Create temporary GreedyAI players for the rollout
+	var sim_red: GreedyAI = GreedyAI.new(PieceData.Team.RED)
+	var sim_blue: GreedyAI = GreedyAI.new(PieceData.Team.BLUE)
 
 	# The opponent just played (we applied our move), so it's opponent's turn next
 	var current: PieceData.Team = get_enemy_team()
 
 	for turn: int in range(rollout_depth):
-		var sim_ai: HeuristicAI = sim_red if current == PieceData.Team.RED else sim_blue
+		var sim_ai: GreedyAI = sim_red if current == PieceData.Team.RED else sim_blue
 		var move: Dictionary = sim_ai.choose_move(world)
 		if move.size() == 0:
 			# Current player can't move — opponent wins
