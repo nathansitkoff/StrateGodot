@@ -160,16 +160,15 @@ func clone() -> BoardState:
 
 
 func checksum() -> int:
-	var hash: int = 0
+	var h: int = 0
 	for piece_id: int in pieces:
 		var p: Dictionary = pieces[piece_id]
-		# Combine piece_id, rank, team, position into hash
-		hash = hash ^ (piece_id * 73856093)
-		hash = hash ^ (int(p["rank"]) * 19349663)
-		hash = hash ^ (int(p["team"]) * 83492791)
-		hash = hash ^ (p["pos"].x * 48611)
-		hash = hash ^ (p["pos"].y * 76963)
-	return hash
+		h = h ^ (piece_id * 73856093)
+		h = h ^ (int(p["rank"]) * 19349663)
+		h = h ^ (int(p["team"]) * 83492791)
+		h = h ^ (p["pos"].x * 48611)
+		h = h ^ (p["pos"].y * 76963)
+	return h
 
 
 func get_setup_rows(team: PieceData.Team) -> Array[int]:
