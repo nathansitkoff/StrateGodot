@@ -23,7 +23,6 @@ offset_top = -60
 offset_right = -220
 grow_horizontal = 2
 grow_vertical = 0
-self_modulate = Color(1, 1, 1, 0.7)
 
 [node name="HBox" type="HBoxContainer" parent="Controls"]
 layout_mode = 2

@@ -214,6 +214,7 @@ func _show_ui() -> void:
 	turn_bar.visible = true
 	board.offset_left = 220
 	board.offset_top = 36
+	board.offset_bottom = -60
 
 
 func _hide_ui() -> void:
@@ -222,3 +223,4 @@ func _hide_ui() -> void:
 	turn_bar.visible = false
 	board.offset_left = 0
 	board.offset_top = 0
+	board.offset_bottom = 0
