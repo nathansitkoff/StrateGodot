@@ -71,22 +71,22 @@ func add_piece(rank: PieceData.Rank, team: PieceData.Team, pos: Vector2i) -> int
 	return id
 
 
-# Check if moving piece_id to target would violate the repetition rule.
-# A piece cannot return to a position it has visited 2+ times in the last 6 moves.
-# This catches both two-square oscillation (A-B-A-B) and patterns with detours
-# (A-B-A-C-A-B where A is visited too often).
+# Check if moving piece_id to target would violate the two-square rule.
+# The rule: a piece cannot move back and forth between the same two squares
+# for more than 3 consecutive moves. History stores the positions BEFORE each move.
+# Pattern: history[-3]=A, history[-2]=B, history[-1]=A, current=B, target=A → block
 func _violates_two_square_rule(piece_id: int, target: Vector2i) -> bool:
 	if piece_id not in _move_history:
 		return false
 	var history: Array = _move_history[piece_id]
-	# Count how many times target appears in recent history
-	var count: int = 0
-	for pos: Vector2i in history:
-		if pos == target:
-			count += 1
-	# Also count if piece is currently at target (shouldn't happen but be safe)
-	# Block if the piece has already been at the target position 2+ times recently
-	return count >= 2
+	if history.size() < 3:
+		return false
+	var current: Vector2i = pieces[piece_id]["pos"]
+	var h: Array = history
+	var n: int = h.size()
+	if (h[n - 1] as Vector2i) == target and (h[n - 2] as Vector2i) == current and (h[n - 3] as Vector2i) == target:
+		return true
+	return false
 
 
 func remove_piece(piece_id: int) -> void:
@@ -110,8 +110,8 @@ func move_piece(piece_id: int, to: Vector2i) -> void:
 	if piece_id not in _move_history:
 		_move_history[piece_id] = []
 	_move_history[piece_id].append(from)
-	# Keep last 6 positions to detect repetition patterns
-	if _move_history[piece_id].size() > 6:
+	# Keep only last 4 positions (enough to detect 3 back-and-forth)
+	if _move_history[piece_id].size() > 4:
 		_move_history[piece_id].pop_front()
 
 
