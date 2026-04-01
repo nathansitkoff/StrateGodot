@@ -13,11 +13,6 @@ func _init(ai_team: PieceData.Team = PieceData.Team.BLUE) -> void:
 	_rng.randomize()
 
 
-func generate_setup(board_state: BoardState) -> void:
-	var helper: HeuristicAI = HeuristicAI.new(team)
-	helper.generate_setup(board_state)
-
-
 func choose_move(board_state: BoardState) -> Dictionary:
 	var my_pieces: Array[int] = board_state.get_team_pieces(team)
 	if my_pieces.size() == 0:
