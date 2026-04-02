@@ -1,12 +1,15 @@
 extends Control
 
 signal setup_complete(team: PieceData.Team)
+signal quit_pressed
 
 @onready var board: Control = %Board
 @onready var piece_tray: VBoxContainer = %PieceTray
 @onready var ready_button: Button = %ReadyButton
 @onready var randomize_button: Button = %RandomizeButton
+@onready var reset_button: Button = %ResetButton
 @onready var placement_buttons: VBoxContainer = %PlacementButtons
+@onready var setup_quit_button: Button = %SetupQuitButton
 @onready var team_label: Label = %SetupTeamLabel
 
 var current_team: PieceData.Team = PieceData.Team.RED
@@ -18,6 +21,8 @@ var _test_mode: bool = false
 func _ready() -> void:
 	ready_button.pressed.connect(_on_ready_pressed)
 	randomize_button.pressed.connect(_on_randomize_pressed)
+	reset_button.pressed.connect(_on_reset_pressed)
+	setup_quit_button.pressed.connect(func() -> void: quit_pressed.emit())
 	board.square_clicked.connect(_on_square_clicked)
 
 
@@ -63,10 +68,6 @@ func _build_tray() -> void:
 func _build_placement_buttons() -> void:
 	for child: Node in placement_buttons.get_children():
 		child.queue_free()
-
-	if not _test_mode:
-		placement_buttons.visible = false
-		return
 
 	placement_buttons.visible = true
 	for i: int in range(Placement.STRATEGY_NAMES.size()):
@@ -205,6 +206,23 @@ func _on_randomize_pressed() -> void:
 		var rank: int = to_place[i]
 		GameManager.board_state.add_piece(rank, current_team, empty_cells[i])
 		placed_counts[rank] += 1
+
+	selected_rank = -1
+	board.refresh()
+	_refresh_tray()
+
+
+func _on_reset_pressed() -> void:
+	var to_remove: Array[int] = []
+	for piece_id: int in GameManager.board_state.pieces:
+		if GameManager.board_state.pieces[piece_id]["team"] == current_team:
+			to_remove.append(piece_id)
+	for piece_id: int in to_remove:
+		GameManager.board_state.remove_piece(piece_id)
+
+	placed_counts.clear()
+	for rank: int in PieceData.RANK_INFO:
+		placed_counts[rank] = 0
 
 	selected_rank = -1
 	board.refresh()

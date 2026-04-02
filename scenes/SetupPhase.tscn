@@ -61,9 +61,20 @@ layout_mode = 2
 size_flags_horizontal = 3
 text = "Randomize"
 
+[node name="ResetButton" type="Button" parent="Panel/MarginContainer/VBox/ButtonRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Reset"
+
 [node name="ReadyButton" type="Button" parent="Panel/MarginContainer/VBox/ButtonRow"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Ready"
 disabled = true
+
+[node name="SetupQuitButton" type="Button" parent="Panel/MarginContainer/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Quit"

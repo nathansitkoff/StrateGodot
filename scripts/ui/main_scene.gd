@@ -31,6 +31,7 @@ func _ready() -> void:
 	GameManager.combat_occurred.connect(_on_combat_occurred)
 	GameManager.game_ended.connect(_on_game_ended)
 	setup_phase.setup_complete.connect(_on_setup_complete)
+	setup_phase.quit_pressed.connect(_exit_to_menu)
 	turn_switch.acknowledged.connect(_on_turn_switch_acknowledged)
 	game_over.play_again_pressed.connect(_on_play_again)
 	main_menu.mode_selected.connect(_on_mode_selected)
