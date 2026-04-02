@@ -5,6 +5,8 @@ signal back_pressed
 @onready var game_count_input: SpinBox = %GameCountInput
 @onready var red_ai_select: OptionButton = %RedAISelect
 @onready var blue_ai_select: OptionButton = %BlueAISelect
+@onready var red_place_select: OptionButton = %RedPlaceSelect
+@onready var blue_place_select: OptionButton = %BluePlaceSelect
 @onready var save_select: OptionButton = %SaveSelect
 @onready var start_button: Button = %StartButton
 @onready var stop_button: Button = %StopButton
@@ -47,6 +49,9 @@ func _ready() -> void:
 	for ai_name: String in AIBase.AI_NAMES:
 		red_ai_select.add_item(ai_name)
 		blue_ai_select.add_item(ai_name)
+	for strat_name: String in Placement.STRATEGY_NAMES:
+		red_place_select.add_item(strat_name)
+		blue_place_select.add_item(strat_name)
 	save_select.add_item("Don't Save")
 	save_select.add_item("Save Draws")
 	save_select.add_item("Save All")
@@ -97,7 +102,9 @@ func _run_batch() -> void:
 		var red_ai_name: String = AIBase.AI_NAMES[red_ai_select.selected]
 		var blue_ai_name: String = AIBase.AI_NAMES[blue_ai_select.selected]
 		var ai_red: AIBase = AIBase.create(red_ai_select.selected, PieceData.Team.RED)
+		ai_red.placement_strategy = red_place_select.selected as Placement.Strategy
 		var ai_blue: AIBase = AIBase.create(blue_ai_select.selected, PieceData.Team.BLUE)
+		ai_blue.placement_strategy = blue_place_select.selected as Placement.Strategy
 
 		var starting: PieceData.Team = PieceData.Team.RED if _games_played % 2 == 0 else PieceData.Team.BLUE
 		var save_mode: int = save_select.selected

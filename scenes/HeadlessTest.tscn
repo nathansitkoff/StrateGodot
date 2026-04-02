@@ -35,28 +35,39 @@ horizontal_alignment = 1
 [node name="Sep1" type="HSeparator" parent="MarginContainer/VBox"]
 layout_mode = 2
 
+[node name="AIRow" type="HBoxContainer" parent="MarginContainer/VBox"]
+layout_mode = 2
+
+[node name="RedAILabel" type="Label" parent="MarginContainer/VBox/AIRow"]
+layout_mode = 2
+text = "Red AI:"
+
+[node name="RedAISelect" type="OptionButton" parent="MarginContainer/VBox/AIRow"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="RedPlaceSelect" type="OptionButton" parent="MarginContainer/VBox/AIRow"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="BlueAILabel" type="Label" parent="MarginContainer/VBox/AIRow"]
+layout_mode = 2
+text = "  Blue AI:"
+
+[node name="BlueAISelect" type="OptionButton" parent="MarginContainer/VBox/AIRow"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="BluePlaceSelect" type="OptionButton" parent="MarginContainer/VBox/AIRow"]
+unique_name_in_owner = true
+layout_mode = 2
+
 [node name="OptionsRow" type="HBoxContainer" parent="MarginContainer/VBox"]
-layout_mode = 2
-
-[node name="RedAILabel" type="Label" parent="MarginContainer/VBox/OptionsRow"]
-layout_mode = 2
-text = "Red:"
-
-[node name="RedAISelect" type="OptionButton" parent="MarginContainer/VBox/OptionsRow"]
-unique_name_in_owner = true
-layout_mode = 2
-
-[node name="BlueAILabel" type="Label" parent="MarginContainer/VBox/OptionsRow"]
-layout_mode = 2
-text = "  Blue:"
-
-[node name="BlueAISelect" type="OptionButton" parent="MarginContainer/VBox/OptionsRow"]
-unique_name_in_owner = true
 layout_mode = 2
 
 [node name="SaveLabel" type="Label" parent="MarginContainer/VBox/OptionsRow"]
 layout_mode = 2
-text = "  Save:"
+text = "Save:"
 
 [node name="SaveSelect" type="OptionButton" parent="MarginContainer/VBox/OptionsRow"]
 unique_name_in_owner = true

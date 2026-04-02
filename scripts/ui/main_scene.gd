@@ -31,7 +31,6 @@ func _ready() -> void:
 	GameManager.combat_occurred.connect(_on_combat_occurred)
 	GameManager.game_ended.connect(_on_game_ended)
 	setup_phase.setup_complete.connect(_on_setup_complete)
-	setup_phase.ai_place_requested.connect(_on_ai_place_requested)
 	turn_switch.acknowledged.connect(_on_turn_switch_acknowledged)
 	game_over.play_again_pressed.connect(_on_play_again)
 	main_menu.mode_selected.connect(_on_mode_selected)
@@ -73,20 +72,28 @@ func _get_mode_name() -> String:
 		_: return "Unknown"
 
 
-func _on_options_confirmed(first_team: PieceData.Team, red_ai_type: int, blue_ai_type: int) -> void:
+func _on_options_confirmed(first_team: PieceData.Team, red_ai_type: int, blue_ai_type: int, red_placement: int, blue_placement: int) -> void:
 	ai_players.clear()
 	_red_ai_name = "Human"
 	_blue_ai_name = "Human"
 	match _pending_mode:
 		GameManager.GameMode.VS_AI:
-			ai_players[PieceData.Team.BLUE] = AIBase.create(blue_ai_type, PieceData.Team.BLUE)
+			var ai: AIBase = AIBase.create(blue_ai_type, PieceData.Team.BLUE)
+			ai.placement_strategy = blue_placement as Placement.Strategy
+			ai_players[PieceData.Team.BLUE] = ai
 			_blue_ai_name = AIBase.AI_NAMES[blue_ai_type]
 		GameManager.GameMode.AI_TEST:
-			ai_players[PieceData.Team.BLUE] = AIBase.create(blue_ai_type, PieceData.Team.BLUE)
+			var ai: AIBase = AIBase.create(blue_ai_type, PieceData.Team.BLUE)
+			ai.placement_strategy = blue_placement as Placement.Strategy
+			ai_players[PieceData.Team.BLUE] = ai
 			_blue_ai_name = AIBase.AI_NAMES[blue_ai_type]
 		GameManager.GameMode.AI_VS_AI:
-			ai_players[PieceData.Team.RED] = AIBase.create(red_ai_type, PieceData.Team.RED)
-			ai_players[PieceData.Team.BLUE] = AIBase.create(blue_ai_type, PieceData.Team.BLUE)
+			var ai_red: AIBase = AIBase.create(red_ai_type, PieceData.Team.RED)
+			ai_red.placement_strategy = red_placement as Placement.Strategy
+			ai_players[PieceData.Team.RED] = ai_red
+			var ai_blue: AIBase = AIBase.create(blue_ai_type, PieceData.Team.BLUE)
+			ai_blue.placement_strategy = blue_placement as Placement.Strategy
+			ai_players[PieceData.Team.BLUE] = ai_blue
 			_red_ai_name = AIBase.AI_NAMES[red_ai_type]
 			_blue_ai_name = AIBase.AI_NAMES[blue_ai_type]
 
@@ -143,12 +150,6 @@ func _on_phase_changed(phase: GameManager.GamePhase) -> void:
 
 func _on_setup_complete(team: PieceData.Team) -> void:
 	GameManager.finish_setup(team)
-
-
-func _on_ai_place_requested(team: PieceData.Team) -> void:
-	if team in ai_players:
-		ai_players[team].generate_setup(GameManager.board_state)
-		board.refresh()
 
 
 func _on_turn_changed(team: PieceData.Team) -> void:

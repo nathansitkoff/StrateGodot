@@ -1,13 +1,12 @@
 extends Control
 
 signal setup_complete(team: PieceData.Team)
-signal ai_place_requested(team: PieceData.Team)
 
 @onready var board: Control = %Board
 @onready var piece_tray: VBoxContainer = %PieceTray
 @onready var ready_button: Button = %ReadyButton
 @onready var randomize_button: Button = %RandomizeButton
-@onready var ai_place_button: Button = %AIPlaceButton
+@onready var placement_buttons: VBoxContainer = %PlacementButtons
 @onready var team_label: Label = %SetupTeamLabel
 
 var current_team: PieceData.Team = PieceData.Team.RED
@@ -19,7 +18,6 @@ var _test_mode: bool = false
 func _ready() -> void:
 	ready_button.pressed.connect(_on_ready_pressed)
 	randomize_button.pressed.connect(_on_randomize_pressed)
-	ai_place_button.pressed.connect(_on_ai_place_pressed)
 	board.square_clicked.connect(_on_square_clicked)
 
 
@@ -31,7 +29,7 @@ func start_setup(team: PieceData.Team, test_mode: bool = false) -> void:
 	for rank: int in PieceData.RANK_INFO:
 		placed_counts[rank] = 0
 
-	# Count any pieces already placed for this team (e.g. from prior placement)
+	# Count any pieces already placed for this team
 	for piece_id: int in GameManager.board_state.pieces:
 		var piece: Dictionary = GameManager.board_state.pieces[piece_id]
 		if piece["team"] == current_team:
@@ -44,8 +42,8 @@ func start_setup(team: PieceData.Team, test_mode: bool = false) -> void:
 		team_label.text = "Player %s — Place Your Pieces" % team_name
 
 	ready_button.disabled = true
-	_update_special_buttons()
 	_build_tray()
+	_build_placement_buttons()
 	visible = true
 	board.refresh()
 
@@ -60,6 +58,22 @@ func _build_tray() -> void:
 		_update_tray_button(btn, rank)
 		btn.pressed.connect(_on_rank_selected.bind(rank))
 		piece_tray.add_child(btn)
+
+
+func _build_placement_buttons() -> void:
+	for child: Node in placement_buttons.get_children():
+		child.queue_free()
+
+	if not _test_mode:
+		placement_buttons.visible = false
+		return
+
+	placement_buttons.visible = true
+	for i: int in range(Placement.STRATEGY_NAMES.size()):
+		var btn: Button = Button.new()
+		btn.text = Placement.STRATEGY_NAMES[i]
+		btn.pressed.connect(_on_placement_strategy_pressed.bind(i))
+		placement_buttons.add_child(btn)
 
 
 func _update_tray_button(btn: Button, rank: int) -> void:
@@ -80,7 +94,6 @@ func _refresh_tray() -> void:
 		_update_tray_button(buttons[i] as Button, ranks[i])
 
 	if _test_mode:
-		# Ready if flag + at least 1 movable piece placed
 		var has_flag: bool = placed_counts.get(PieceData.Rank.FLAG, 0) > 0
 		var has_mover: bool = false
 		for rank: int in placed_counts:
@@ -98,23 +111,19 @@ func _refresh_tray() -> void:
 
 
 func _update_special_buttons() -> void:
-	# AI place button only in test mode for blue
-	ai_place_button.visible = _test_mode and current_team == PieceData.Team.BLUE
-
 	if _test_mode:
 		var red_in_blue_territory: bool = _has_enemy_in_territory()
 		if current_team == PieceData.Team.BLUE:
 			randomize_button.disabled = red_in_blue_territory
-			ai_place_button.disabled = red_in_blue_territory
+			for btn: Node in placement_buttons.get_children():
+				(btn as Button).disabled = red_in_blue_territory
 		else:
 			randomize_button.disabled = false
 	else:
-		ai_place_button.visible = false
 		randomize_button.disabled = false
 
 
 func _has_enemy_in_territory() -> bool:
-	# Check if red pieces are in blue's starting rows
 	var blue_rows: Array[int] = GameManager.board_state.get_setup_rows(PieceData.Team.BLUE)
 	for piece_id: int in GameManager.board_state.pieces:
 		var piece: Dictionary = GameManager.board_state.pieces[piece_id]
@@ -138,7 +147,6 @@ func _on_square_clicked(pos: Vector2i) -> void:
 	if not GameManager.board_state.is_valid_cell(pos):
 		return
 
-	# In normal mode, restrict to setup rows
 	if not _test_mode:
 		var valid_rows: Array[int] = GameManager.board_state.get_setup_rows(current_team)
 		if pos.y not in valid_rows:
@@ -146,7 +154,6 @@ func _on_square_clicked(pos: Vector2i) -> void:
 
 	var existing: int = GameManager.board_state.get_piece_at(pos)
 
-	# If clicking an occupied cell, remove the piece (only own team)
 	if existing != -1:
 		var piece: Dictionary = GameManager.board_state.pieces[existing]
 		if piece["team"] == current_team:
@@ -156,7 +163,6 @@ func _on_square_clicked(pos: Vector2i) -> void:
 			_refresh_tray()
 		return
 
-	# Place selected rank
 	if selected_rank == -1:
 		return
 
@@ -179,7 +185,6 @@ func _on_ready_pressed() -> void:
 
 
 func _on_randomize_pressed() -> void:
-	# Collect empty cells in valid rows
 	var valid_rows: Array[int] = GameManager.board_state.get_setup_rows(current_team)
 	var empty_cells: Array[Vector2i] = []
 	for col: int in range(BoardState.BOARD_SIZE):
@@ -206,9 +211,19 @@ func _on_randomize_pressed() -> void:
 	_refresh_tray()
 
 
-func _on_ai_place_pressed() -> void:
-	ai_place_requested.emit(current_team)
-	# Recount placed pieces after AI placement
+func _on_placement_strategy_pressed(strategy_index: int) -> void:
+	# Remove existing pieces for this team
+	var to_remove: Array[int] = []
+	for piece_id: int in GameManager.board_state.pieces:
+		if GameManager.board_state.pieces[piece_id]["team"] == current_team:
+			to_remove.append(piece_id)
+	for piece_id: int in to_remove:
+		GameManager.board_state.remove_piece(piece_id)
+
+	# Apply the selected strategy
+	Placement.place(strategy_index as Placement.Strategy, GameManager.board_state, current_team)
+
+	# Recount placed pieces
 	placed_counts.clear()
 	for rank: int in PieceData.RANK_INFO:
 		placed_counts[rank] = 0
@@ -216,6 +231,7 @@ func _on_ai_place_pressed() -> void:
 		var piece: Dictionary = GameManager.board_state.pieces[piece_id]
 		if piece["team"] == current_team:
 			placed_counts[piece["rank"]] += 1
+
 	selected_rank = -1
 	board.refresh()
 	_refresh_tray()

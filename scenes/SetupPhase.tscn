@@ -47,10 +47,9 @@ unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="AIPlaceButton" type="Button" parent="Panel/MarginContainer/VBox"]
+[node name="PlacementButtons" type="VBoxContainer" parent="Panel/MarginContainer/VBox"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "AI Place"
 visible = false
 
 [node name="ButtonRow" type="HBoxContainer" parent="Panel/MarginContainer/VBox"]

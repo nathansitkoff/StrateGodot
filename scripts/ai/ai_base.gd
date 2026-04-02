@@ -4,6 +4,7 @@ extends RefCounted
 const AI_NAMES: Array[String] = ["Heuristic", "Monte Carlo", "Rollout", "Greedy"]
 
 var team: PieceData.Team = PieceData.Team.BLUE
+var placement_strategy: Placement.Strategy = Placement.Strategy.CLUSTERED_DEFENSE
 # Track enemy piece IDs that have moved at least once
 var has_moved: Dictionary = {}
 
@@ -59,133 +60,7 @@ func get_enemy_team() -> PieceData.Team:
 
 
 func generate_setup(board_state: BoardState) -> void:
-	var valid_rows: Array[int] = board_state.get_setup_rows(team)
-	var back_row: int = valid_rows[0]
-	var second_row: int = valid_rows[1]
-	var front_rows: Array[int] = [valid_rows[2], valid_rows[3]]
-
-	var back_cells: Array[Vector2i] = []
-	var second_cells: Array[Vector2i] = []
-	var front_cells: Array[Vector2i] = []
-	for col: int in range(BoardState.BOARD_SIZE):
-		var pos_back: Vector2i = Vector2i(col, back_row)
-		var pos_second: Vector2i = Vector2i(col, second_row)
-		if board_state.is_valid_cell(pos_back):
-			back_cells.append(pos_back)
-		if board_state.is_valid_cell(pos_second):
-			second_cells.append(pos_second)
-		for row: int in front_rows:
-			var pos_front: Vector2i = Vector2i(col, row)
-			if board_state.is_valid_cell(pos_front):
-				front_cells.append(pos_front)
-
-	back_cells.shuffle()
-	second_cells.shuffle()
-	front_cells.shuffle()
-
-	# Place flag in back row
-	var flag_pos: Vector2i = back_cells.pop_back()
-	board_state.add_piece(PieceData.Rank.FLAG, team, flag_pos)
-
-	# Place bombs around the flag
-	var bomb_count: int = 0
-	var bomb_positions: Array[Vector2i] = []
-	for pos: Vector2i in back_cells.duplicate():
-		if bomb_count >= 4 and abs(pos.x - flag_pos.x) > 1:
-			continue
-		if abs(pos.x - flag_pos.x) <= 1 and bomb_count < 6:
-			bomb_positions.append(pos)
-			back_cells.erase(pos)
-			bomb_count += 1
-	for pos: Vector2i in second_cells.duplicate():
-		if bomb_count >= 6:
-			break
-		if abs(pos.x - flag_pos.x) <= 1:
-			bomb_positions.append(pos)
-			second_cells.erase(pos)
-			bomb_count += 1
-	var overflow_cells: Array[Vector2i] = back_cells.duplicate()
-	overflow_cells.append_array(second_cells.duplicate())
-	overflow_cells.shuffle()
-	for pos: Vector2i in overflow_cells:
-		if bomb_count >= 6:
-			break
-		if pos not in bomb_positions:
-			bomb_positions.append(pos)
-			if pos in back_cells:
-				back_cells.erase(pos)
-			elif pos in second_cells:
-				second_cells.erase(pos)
-			bomb_count += 1
-
-	for pos: Vector2i in bomb_positions:
-		board_state.add_piece(PieceData.Rank.BOMB, team, pos)
-
-	var remaining_cells: Array[Vector2i] = []
-	remaining_cells.append_array(back_cells)
-	remaining_cells.append_array(second_cells)
-	remaining_cells.append_array(front_cells)
-	remaining_cells.shuffle()
-
-	var high_ranks: Array[int] = [PieceData.Rank.MARSHAL, PieceData.Rank.GENERAL]
-	var back_and_second: Array[Vector2i] = []
-	var other_cells: Array[Vector2i] = []
-	for pos: Vector2i in remaining_cells:
-		if pos.y == back_row or pos.y == second_row:
-			back_and_second.append(pos)
-		else:
-			other_cells.append(pos)
-
-	var cell_idx: int = 0
-	for rank: int in high_ranks:
-		if cell_idx < back_and_second.size():
-			board_state.add_piece(rank, team, back_and_second[cell_idx])
-			cell_idx += 1
-
-	var scout_cells: Array[Vector2i] = []
-	scout_cells.append_array(other_cells)
-	for i: int in range(cell_idx, back_and_second.size()):
-		scout_cells.append(back_and_second[i])
-	scout_cells.shuffle()
-	var front_first: Array[Vector2i] = []
-	var back_rest: Array[Vector2i] = []
-	for pos: Vector2i in scout_cells:
-		if pos.y in front_rows:
-			front_first.append(pos)
-		else:
-			back_rest.append(pos)
-	var ordered_cells: Array[Vector2i] = []
-	ordered_cells.append_array(front_first)
-	ordered_cells.append_array(back_rest)
-
-	var placed: int = 0
-	var scout_count: int = PieceData.get_count(PieceData.Rank.SCOUT)
-	var used_positions: Array[Vector2i] = []
-	for pos: Vector2i in ordered_cells:
-		if placed >= scout_count:
-			break
-		board_state.add_piece(PieceData.Rank.SCOUT, team, pos)
-		used_positions.append(pos)
-		placed += 1
-
-	var final_cells: Array[Vector2i] = []
-	for pos: Vector2i in ordered_cells:
-		if pos not in used_positions:
-			final_cells.append(pos)
-	final_cells.shuffle()
-
-	var remaining_ranks: Array[int] = [
-		PieceData.Rank.SPY,
-		PieceData.Rank.MINER, PieceData.Rank.MINER, PieceData.Rank.MINER, PieceData.Rank.MINER, PieceData.Rank.MINER,
-		PieceData.Rank.SERGEANT, PieceData.Rank.SERGEANT, PieceData.Rank.SERGEANT, PieceData.Rank.SERGEANT,
-		PieceData.Rank.LIEUTENANT, PieceData.Rank.LIEUTENANT, PieceData.Rank.LIEUTENANT, PieceData.Rank.LIEUTENANT,
-		PieceData.Rank.CAPTAIN, PieceData.Rank.CAPTAIN, PieceData.Rank.CAPTAIN, PieceData.Rank.CAPTAIN,
-		PieceData.Rank.MAJOR, PieceData.Rank.MAJOR, PieceData.Rank.MAJOR,
-		PieceData.Rank.COLONEL, PieceData.Rank.COLONEL,
-	]
-
-	for i: int in range(min(remaining_ranks.size(), final_cells.size())):
-		board_state.add_piece(remaining_ranks[i], team, final_cells[i])
+	Placement.place(placement_strategy, board_state, team)
 
 
 func choose_move(_board_state: BoardState) -> Dictionary:

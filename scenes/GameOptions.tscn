@@ -19,10 +19,10 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -150
-offset_top = -100
-offset_right = 150
-offset_bottom = 100
+offset_left = -180
+offset_top = -160
+offset_right = 180
+offset_bottom = 160
 
 [node name="Title" type="Label" parent="VBox"]
 layout_mode = 2
@@ -75,6 +75,20 @@ size_flags_horizontal = 3
 unique_name_in_owner = true
 layout_mode = 2
 
+[node name="RedPlaceRow" type="HBoxContainer" parent="VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+visible = false
+
+[node name="RedPlaceLabel" type="Label" parent="VBox/RedPlaceRow"]
+layout_mode = 2
+text = "Red Placement:"
+size_flags_horizontal = 3
+
+[node name="OptRedPlaceSelect" type="OptionButton" parent="VBox/RedPlaceRow"]
+unique_name_in_owner = true
+layout_mode = 2
+
 [node name="BlueAIRow" type="HBoxContainer" parent="VBox"]
 unique_name_in_owner = true
 layout_mode = 2
@@ -86,6 +100,20 @@ text = "Blue AI:"
 size_flags_horizontal = 3
 
 [node name="OptBlueAISelect" type="OptionButton" parent="VBox/BlueAIRow"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="BluePlaceRow" type="HBoxContainer" parent="VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+visible = false
+
+[node name="BluePlaceLabel" type="Label" parent="VBox/BluePlaceRow"]
+layout_mode = 2
+text = "Blue Placement:"
+size_flags_horizontal = 3
+
+[node name="OptBluePlaceSelect" type="OptionButton" parent="VBox/BluePlaceRow"]
 unique_name_in_owner = true
 layout_mode = 2
 
