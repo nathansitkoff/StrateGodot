@@ -24,9 +24,38 @@ var selected_piece_id: int = -1
 var valid_moves: Array[Vector2i] = []
 var last_enemy_move: Vector2i = Vector2i(-1, -1)
 
+# Animation state
+var _anim_piece_id: int = -1
+var _anim_from: Vector2i = Vector2i.ZERO
+var _anim_to: Vector2i = Vector2i.ZERO
+var _anim_progress: float = 1.0
+const ANIM_DURATION: float = 0.15
+
+signal animation_finished
+
 
 func _ready() -> void:
 	_calculate_layout()
+	set_process(false)
+
+
+func _process(delta: float) -> void:
+	if _anim_progress < 1.0:
+		_anim_progress += delta / ANIM_DURATION
+		if _anim_progress >= 1.0:
+			_anim_progress = 1.0
+			set_process(false)
+			animation_finished.emit()
+		queue_redraw()
+
+
+func animate_move(piece_id: int, from: Vector2i, to: Vector2i) -> void:
+	_anim_piece_id = piece_id
+	_anim_from = from
+	_anim_to = to
+	_anim_progress = 0.0
+	set_process(true)
+	queue_redraw()
 
 
 func _calculate_layout() -> void:
@@ -134,7 +163,18 @@ func _draw_pieces() -> void:
 	for piece_id: int in bs.pieces:
 		var piece: Dictionary = bs.pieces[piece_id]
 		var pos: Vector2i = piece["pos"]
-		var rect: Rect2 = _get_cell_rect(pos)
+		var rect: Rect2
+		# Animate the moving piece
+		if piece_id == _anim_piece_id and _anim_progress < 1.0:
+			var from_rect: Rect2 = _get_cell_rect(_anim_from)
+			var to_rect: Rect2 = _get_cell_rect(_anim_to)
+			var t: float = _anim_progress * _anim_progress * (3.0 - 2.0 * _anim_progress)  # smoothstep
+			rect = Rect2(
+				from_rect.position.lerp(to_rect.position, t),
+				from_rect.size,
+			)
+		else:
+			rect = _get_cell_rect(pos)
 		var piece_rect: Rect2 = rect.grow(-3.0)
 		var radius: float = cell_size * 0.12
 

@@ -19,6 +19,8 @@ var play_controller: Node
 var ai_players: Dictionary = {}
 var _pending_mode: GameManager.GameMode = GameManager.GameMode.LOCAL_2P
 var _recorder: GameRecorder = null
+var _ai_pending_from: Vector2i = Vector2i.ZERO
+var _ai_pending_to: Vector2i = Vector2i.ZERO
 var _red_ai_name: String = "Human"
 var _blue_ai_name: String = "Human"
 
@@ -48,6 +50,7 @@ func _ready() -> void:
 	add_child(play_controller)
 	play_controller.setup(board)
 	quit_button.pressed.connect(_exit_to_menu)
+	board.animation_finished.connect(_on_ai_animation_finished)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -291,5 +294,20 @@ func _execute_ai_move() -> void:
 	var ai: AIBase = ai_players[GameManager.current_team]
 	var move: Dictionary = ai.choose_move(GameManager.board_state)
 	if move.size() > 0:
-		GameManager.execute_move(move["from"], move["to"])
-		board.refresh()
+		var from: Vector2i = move["from"]
+		var to: Vector2i = move["to"]
+		var piece_id: int = GameManager.board_state.get_piece_at(from)
+		_ai_pending_from = from
+		_ai_pending_to = to
+		board.animate_move(piece_id, from, to)
+
+
+func _on_ai_animation_finished() -> void:
+	if _ai_pending_from == _ai_pending_to:
+		return
+	if not _is_ai_team(GameManager.current_team):
+		return
+	GameManager.execute_move(_ai_pending_from, _ai_pending_to)
+	_ai_pending_from = Vector2i.ZERO
+	_ai_pending_to = Vector2i.ZERO
+	board.refresh()
