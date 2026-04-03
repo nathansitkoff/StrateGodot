@@ -181,6 +181,7 @@ func _on_turn_changed(team: PieceData.Team) -> void:
 
 
 func _on_combat_occurred(combat_info: Dictionary) -> void:
+	board.flash_combat(combat_info["pos"])
 	hud.show_combat_result(
 		combat_info["atk_rank"],
 		combat_info["def_rank"],

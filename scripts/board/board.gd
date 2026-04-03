@@ -31,22 +31,48 @@ var _anim_to: Vector2i = Vector2i.ZERO
 var _anim_progress: float = 1.0
 const ANIM_DURATION: float = 0.15
 
+# Combat flash
+var _combat_flash_pos: Vector2i = Vector2i(-1, -1)
+var _combat_flash_alpha: float = 0.0
+
+# Last move pulse
+var _last_move_pulse_time: float = 0.0
+
 signal animation_finished
 
 
 func _ready() -> void:
 	_calculate_layout()
-	set_process(false)
 
 
 func _process(delta: float) -> void:
+	var needs_redraw: bool = false
+
 	if _anim_progress < 1.0:
 		_anim_progress += delta / ANIM_DURATION
 		if _anim_progress >= 1.0:
 			_anim_progress = 1.0
-			set_process(false)
 			animation_finished.emit()
+		needs_redraw = true
+
+	if _combat_flash_alpha > 0.0:
+		_combat_flash_alpha -= delta / 0.3
+		if _combat_flash_alpha < 0.0:
+			_combat_flash_alpha = 0.0
+		needs_redraw = true
+
+	if last_enemy_move != Vector2i(-1, -1):
+		_last_move_pulse_time += delta
+		needs_redraw = true
+
+	if needs_redraw:
 		queue_redraw()
+
+
+func flash_combat(pos: Vector2i) -> void:
+	_combat_flash_pos = pos
+	_combat_flash_alpha = 1.0
+	queue_redraw()
 
 
 func animate_move(piece_id: int, from: Vector2i, to: Vector2i) -> void:
@@ -131,9 +157,20 @@ func _draw() -> void:
 			if pos in valid_moves:
 				draw_rect(rect, BOARD_COLORS["highlight"])
 
-			# Highlight last enemy move
+			# Pulsing last enemy move indicator
 			if pos == last_enemy_move:
-				draw_rect(rect.grow(-4.0), BOARD_COLORS["last_move"], false, 8.0)
+				var pulse: float = (sin(_last_move_pulse_time * 3.0) + 1.0) / 2.0
+				var glow_alpha: float = 0.15 + pulse * 0.2
+				var glow_color: Color
+				if GameManager.last_move_team == PieceData.Team.RED:
+					glow_color = Color(1.0, 0.5, 0.1, glow_alpha)
+				else:
+					glow_color = Color(0.1, 0.6, 1.0, glow_alpha)
+				draw_rect(rect, glow_color)
+
+			# Combat flash
+			if pos == _combat_flash_pos and _combat_flash_alpha > 0.0:
+				draw_rect(rect, Color(1.0, 1.0, 1.0, _combat_flash_alpha * 0.7))
 
 			# Subtle grid lines
 			draw_rect(rect, BOARD_COLORS["grid"], false, 1.0)
@@ -501,8 +538,12 @@ func clear_selection() -> void:
 func refresh() -> void:
 	# Show last enemy move highlight if the last move was from the other team
 	var viewing: PieceData.Team = _get_viewing_team()
+	var new_last_move: Vector2i
 	if GameManager.last_move_team != viewing and GameManager.last_move_to != Vector2i(-1, -1):
-		last_enemy_move = GameManager.last_move_to
+		new_last_move = GameManager.last_move_to
 	else:
-		last_enemy_move = Vector2i(-1, -1)
+		new_last_move = Vector2i(-1, -1)
+	if new_last_move != last_enemy_move:
+		last_enemy_move = new_last_move
+		_last_move_pulse_time = 0.0
 	queue_redraw()
