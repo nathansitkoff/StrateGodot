@@ -208,17 +208,8 @@ func _find_random_move(board_state: BoardState, my_pieces: Array[int]) -> Dictio
 	return {}
 
 
-func _find_any_move(board_state: BoardState, my_pieces: Array[int]) -> Dictionary:
-	var all_moves: Array[Dictionary] = []
-	for piece_id: int in my_pieces:
-		var piece: Dictionary = board_state.pieces[piece_id]
-		if not PieceData.can_move(piece["rank"]):
-			continue
-		var moves: Array[Vector2i] = board_state.get_valid_moves(piece_id)
-		for target_pos: Vector2i in moves:
-			all_moves.append({ "from": piece["pos"], "to": target_pos })
-
+func _find_any_move(board_state: BoardState, _my_pieces: Array[int]) -> Dictionary:
+	var all_moves: Array[Dictionary] = get_all_moves(board_state, team)
 	if all_moves.size() > 0:
 		return all_moves[_rng.randi_range(0, all_moves.size() - 1)]
-
 	return {}

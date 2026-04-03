@@ -1,5 +1,5 @@
 class_name MonteCarloAI
-extends AIBase
+extends SamplingAIBase
 
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
@@ -16,44 +16,16 @@ func _init(ai_team: PieceData.Team = PieceData.Team.BLUE) -> void:
 
 
 func choose_move(board_state: BoardState) -> Dictionary:
-	var my_pieces: Array[int] = board_state.get_team_pieces(team)
-	if my_pieces.size() == 0:
-		return {}
-
-	# Get all moves, ordered by priority
 	var all_moves: Array[Dictionary] = _get_ordered_moves(board_state, team)
 	if all_moves.size() == 0:
 		return {}
 
-	# Only evaluate the top candidates with expensive search
 	var candidates: Array[Dictionary] = all_moves.slice(0, max_top_moves)
+	return sample_best_move(board_state, candidates, samples, _evaluate_world)
 
-	var best_move: Dictionary = candidates[0]
-	var best_score: float = -999999.0
 
-	for move: Dictionary in candidates:
-		var total_score: float = 0.0
-		for s: int in range(samples):
-			var world: BoardState = determinize(board_state)
-			var caps: Dictionary = clone_caps()
-			var move_result: Dictionary = GameManager.apply_move(move["from"], move["to"], world, caps)
-
-			if move_result.get("flag_captured", false):
-				if move_result["winner"] == team:
-					total_score += 10000.0
-				else:
-					total_score -= 10000.0
-				continue
-
-			var ab_score: float = _alpha_beta(world, caps, search_depth - 1, -999999.0, 999999.0, false)
-			total_score += ab_score
-
-		var avg_score: float = total_score / samples
-		if avg_score > best_score:
-			best_score = avg_score
-			best_move = move
-
-	return best_move
+func _evaluate_world(world: BoardState, caps: Dictionary) -> float:
+	return _alpha_beta(world, caps, search_depth - 1, -999999.0, 999999.0, false)
 
 
 func _alpha_beta(bs: BoardState, caps: Dictionary, depth: int, alpha: float, beta: float, maximizing: bool) -> float:
@@ -64,12 +36,8 @@ func _alpha_beta(bs: BoardState, caps: Dictionary, depth: int, alpha: float, bet
 	var all_moves: Array[Dictionary] = _get_ordered_moves(bs, current_team)
 
 	if all_moves.size() == 0:
-		if maximizing:
-			return -10000.0
-		else:
-			return 10000.0
+		return -10000.0 if maximizing else 10000.0
 
-	# At inner nodes, only consider top moves for speed
 	var moves: Array[Dictionary] = all_moves.slice(0, max_inner_moves)
 
 	if maximizing:
@@ -111,7 +79,6 @@ func _alpha_beta(bs: BoardState, caps: Dictionary, depth: int, alpha: float, bet
 
 
 # Generate moves ordered by priority for better alpha-beta pruning
-# Priority: flag captures > winning attacks > even attacks > forward moves > other
 func _get_ordered_moves(bs: BoardState, move_team: PieceData.Team) -> Array[Dictionary]:
 	var flag_captures: Array[Dictionary] = []
 	var winning_attacks: Array[Dictionary] = []
@@ -121,8 +88,7 @@ func _get_ordered_moves(bs: BoardState, move_team: PieceData.Team) -> Array[Dict
 	var other_moves: Array[Dictionary] = []
 	var forward_dir: int = -1 if move_team == PieceData.Team.RED else 1
 
-	var pieces: Array[int] = bs.get_team_pieces(move_team)
-	for piece_id: int in pieces:
+	for piece_id: int in bs.get_team_pieces(move_team):
 		var piece: Dictionary = bs.pieces[piece_id]
 		if not PieceData.can_move(piece["rank"]):
 			continue
