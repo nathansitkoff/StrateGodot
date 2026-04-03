@@ -54,7 +54,10 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey:
 		var key: InputEventKey = event as InputEventKey
 		if key.pressed and key.keycode == KEY_ESCAPE:
-			if main_menu.visible or headless_test.visible or replay_browser.visible:
+			if main_menu.visible:
+				get_tree().quit()
+				return
+			if headless_test.visible or replay_browser.visible:
 				return
 			_exit_to_menu()
 
