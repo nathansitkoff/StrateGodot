@@ -31,7 +31,18 @@ var _anim_to: Vector2i = Vector2i.ZERO
 var _anim_progress: float = 1.0
 const ANIM_DURATION: float = 0.15
 
-# Combat flash
+# Combat animation
+enum CombatAnimState { NONE, FLASH_LOSER, FADE_LOSER, FLASH_LOSER2, FADE_LOSER2 }
+var _combat_anim_state: CombatAnimState = CombatAnimState.NONE
+var _combat_anim_pos: Vector2i = Vector2i(-1, -1)
+var _combat_anim_timer: float = 0.0
+var _combat_loser1_id: int = -1
+var _combat_loser2_id: int = -1  # -1 if only one dies
+var _combat_fade_alpha: float = 1.0  # for fading out pieces
+const COMBAT_FLASH_TIME: float = 0.15
+const COMBAT_FADE_TIME: float = 0.2
+
+# Cell flash overlay
 var _combat_flash_pos: Vector2i = Vector2i(-1, -1)
 var _combat_flash_alpha: float = 0.0
 
@@ -39,6 +50,7 @@ var _combat_flash_alpha: float = 0.0
 var _last_move_pulse_time: float = 0.0
 
 signal animation_finished
+signal combat_animation_finished
 
 
 func _ready() -> void:
@@ -61,6 +73,37 @@ func _process(delta: float) -> void:
 			_combat_flash_alpha = 0.0
 		needs_redraw = true
 
+	if _combat_anim_state != CombatAnimState.NONE:
+		_combat_anim_timer += delta
+		needs_redraw = true
+		match _combat_anim_state:
+			CombatAnimState.FLASH_LOSER:
+				if _combat_anim_timer >= COMBAT_FLASH_TIME:
+					_combat_anim_state = CombatAnimState.FADE_LOSER
+					_combat_anim_timer = 0.0
+					_combat_fade_alpha = 1.0
+			CombatAnimState.FADE_LOSER:
+				_combat_fade_alpha = 1.0 - (_combat_anim_timer / COMBAT_FADE_TIME)
+				if _combat_anim_timer >= COMBAT_FADE_TIME:
+					_combat_fade_alpha = 0.0
+					if _combat_loser2_id != -1:
+						_combat_anim_state = CombatAnimState.FLASH_LOSER2
+						_combat_anim_timer = 0.0
+					else:
+						_combat_anim_state = CombatAnimState.NONE
+						combat_animation_finished.emit()
+			CombatAnimState.FLASH_LOSER2:
+				if _combat_anim_timer >= COMBAT_FLASH_TIME:
+					_combat_anim_state = CombatAnimState.FADE_LOSER2
+					_combat_anim_timer = 0.0
+					_combat_fade_alpha = 1.0
+			CombatAnimState.FADE_LOSER2:
+				_combat_fade_alpha = 1.0 - (_combat_anim_timer / COMBAT_FADE_TIME)
+				if _combat_anim_timer >= COMBAT_FADE_TIME:
+					_combat_fade_alpha = 0.0
+					_combat_anim_state = CombatAnimState.NONE
+					combat_animation_finished.emit()
+
 	if last_enemy_move != Vector2i(-1, -1):
 		_last_move_pulse_time += delta
 		needs_redraw = true
@@ -70,6 +113,18 @@ func _process(delta: float) -> void:
 
 
 func flash_combat(pos: Vector2i) -> void:
+	_combat_flash_pos = pos
+	_combat_flash_alpha = 1.0
+	queue_redraw()
+
+
+func start_combat_animation(pos: Vector2i, loser1_id: int, loser2_id: int) -> void:
+	_combat_anim_pos = pos
+	_combat_loser1_id = loser1_id
+	_combat_loser2_id = loser2_id
+	_combat_anim_state = CombatAnimState.FLASH_LOSER
+	_combat_anim_timer = 0.0
+	_combat_fade_alpha = 1.0
 	_combat_flash_pos = pos
 	_combat_flash_alpha = 1.0
 	queue_redraw()
@@ -231,6 +286,31 @@ func _draw_pieces() -> void:
 		else:
 			bg_color = BOARD_COLORS["hidden_piece"]
 			border_color = Color(0.3, 0.3, 0.3)
+
+		# Combat animation: flash and fade losing pieces
+		var piece_alpha: float = 1.0
+		if _combat_anim_state != CombatAnimState.NONE:
+			var is_loser1: bool = piece_id == _combat_loser1_id
+			var is_loser2: bool = piece_id == _combat_loser2_id
+			if is_loser1 and (_combat_anim_state == CombatAnimState.FLASH_LOSER or _combat_anim_state == CombatAnimState.FADE_LOSER):
+				if _combat_anim_state == CombatAnimState.FLASH_LOSER:
+					bg_color = bg_color.lerp(Color.WHITE, 0.8)
+				else:
+					piece_alpha = _combat_fade_alpha
+			elif is_loser2 and (_combat_anim_state == CombatAnimState.FLASH_LOSER2 or _combat_anim_state == CombatAnimState.FADE_LOSER2):
+				if _combat_anim_state == CombatAnimState.FLASH_LOSER2:
+					bg_color = bg_color.lerp(Color.WHITE, 0.8)
+				else:
+					piece_alpha = _combat_fade_alpha
+			# Already faded loser1 — hide it during loser2 animation
+			if is_loser1 and (_combat_anim_state == CombatAnimState.FLASH_LOSER2 or _combat_anim_state == CombatAnimState.FADE_LOSER2):
+				piece_alpha = 0.0
+
+		if piece_alpha <= 0.01:
+			continue
+
+		bg_color.a = piece_alpha
+		border_color.a = piece_alpha
 
 		# Rounded rectangle background
 		_draw_rounded_rect(piece_rect, bg_color, radius)

@@ -51,6 +51,7 @@ func _ready() -> void:
 	play_controller.setup(board)
 	quit_button.pressed.connect(_exit_to_menu)
 	board.animation_finished.connect(_on_ai_animation_finished)
+	board.combat_animation_finished.connect(_on_ai_combat_animation_finished)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -304,6 +305,36 @@ func _execute_ai_move() -> void:
 
 
 func _on_ai_animation_finished() -> void:
+	if _ai_pending_from == _ai_pending_to:
+		return
+	if not _is_ai_team(GameManager.current_team):
+		return
+	# Check if combat will happen
+	var target_id: int = GameManager.board_state.get_piece_at(_ai_pending_to)
+	if target_id != -1:
+		var attacker_id: int = GameManager.board_state.get_piece_at(_ai_pending_from)
+		var atk_rank: PieceData.Rank = GameManager.board_state.pieces[attacker_id]["rank"]
+		var def_rank: PieceData.Rank = GameManager.board_state.pieces[target_id]["rank"]
+		var result: Combat.Result = Combat.resolve(atk_rank, def_rank)
+		var loser1: int = -1
+		var loser2: int = -1
+		match result:
+			Combat.Result.ATTACKER_WINS:
+				loser1 = target_id
+			Combat.Result.DEFENDER_WINS:
+				loser1 = attacker_id
+			Combat.Result.BOTH_DIE:
+				loser1 = target_id
+				loser2 = attacker_id
+		board.start_combat_animation(_ai_pending_to, loser1, loser2)
+	else:
+		GameManager.execute_move(_ai_pending_from, _ai_pending_to)
+		_ai_pending_from = Vector2i.ZERO
+		_ai_pending_to = Vector2i.ZERO
+		board.refresh()
+
+
+func _on_ai_combat_animation_finished() -> void:
 	if _ai_pending_from == _ai_pending_to:
 		return
 	if not _is_ai_team(GameManager.current_team):
