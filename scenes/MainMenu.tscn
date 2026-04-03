@@ -88,3 +88,13 @@ unique_name_in_owner = true
 layout_mode = 2
 custom_minimum_size = Vector2(0, 50)
 text = "Replays"
+
+[node name="Spacer7" type="Control" parent="VBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 10)
+
+[node name="ExitButton" type="Button" parent="VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(0, 50)
+text = "Exit"

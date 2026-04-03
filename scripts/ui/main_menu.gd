@@ -10,6 +10,7 @@ signal replays_selected
 @onready var ai_vs_ai_button: Button = %AIvsAIButton
 @onready var headless_button: Button = %HeadlessButton
 @onready var replays_button: Button = %ReplaysButton
+@onready var exit_button: Button = %ExitButton
 
 
 func _ready() -> void:
@@ -36,4 +37,7 @@ func _ready() -> void:
 	replays_button.pressed.connect(func() -> void:
 		visible = false
 		replays_selected.emit()
+	)
+	exit_button.pressed.connect(func() -> void:
+		get_tree().quit()
 	)
