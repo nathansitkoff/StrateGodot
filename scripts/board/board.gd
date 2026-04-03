@@ -200,15 +200,12 @@ func _draw_pieces() -> void:
 		# Border
 		_draw_rounded_rect_outline(piece_rect, border_color, radius, 2.0)
 
-		# Revealed indicator
+		# Revealed indicator: yellow eye in upper-left corner
 		if is_own and is_revealed:
-			var marker_radius: float = cell_size * 0.1
-			var marker_pos: Vector2 = Vector2(
-				piece_rect.position.x + piece_rect.size.x - marker_radius - 3.0,
-				piece_rect.position.y + marker_radius + 3.0,
-			)
-			draw_circle(marker_pos, marker_radius + 1.0, Color(0.2, 0.2, 0.2))
-			draw_circle(marker_pos, marker_radius, Color(1.0, 0.85, 0.0))
+			var eye_cx: float = piece_rect.position.x + cell_size * 0.17
+			var eye_cy: float = piece_rect.position.y + cell_size * 0.15
+			var eye_s: float = cell_size * 0.75
+			_draw_revealed_eye(eye_cx, eye_cy, eye_s)
 
 		# Draw rank content if visible
 		if is_own or is_revealed:
@@ -405,6 +402,27 @@ func _draw_small_star(cx: float, cy: float, outer_r: float) -> void:
 		var r: float = outer_r if i % 2 == 0 else inner_r
 		points.append(Vector2(cx + cos(angle) * r, cy - sin(angle) * r))
 	draw_colored_polygon(points, Color(1.0, 0.85, 0.2))
+
+
+func _draw_revealed_eye(cx: float, cy: float, s: float) -> void:
+	var w: float = s * 0.12
+	var h: float = s * 0.06
+	var yellow: Color = Color(1.0, 0.85, 0.0)
+	# Eye outline arcs
+	var segments: int = 6
+	var top_points: PackedVector2Array = PackedVector2Array()
+	var bot_points: PackedVector2Array = PackedVector2Array()
+	for i: int in range(segments + 1):
+		var t: float = float(i) / float(segments)
+		var x: float = cx - w + t * w * 2
+		top_points.append(Vector2(x, cy - sin(t * PI) * h))
+		bot_points.append(Vector2(x, cy + sin(t * PI) * h))
+	# Outline
+	for i: int in range(top_points.size() - 1):
+		draw_line(top_points[i], top_points[i + 1], yellow, 1.5)
+		draw_line(bot_points[i], bot_points[i + 1], yellow, 1.5)
+	# Pupil
+	draw_circle(Vector2(cx, cy), s * 0.03, yellow)
 
 
 # --- Rounded rect helpers ---
