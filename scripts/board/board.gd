@@ -4,11 +4,14 @@ signal square_clicked(pos: Vector2i)
 
 const BOARD_SIZE: int = 10
 const BOARD_COLORS: Dictionary = {
-	"light": Color(0.85, 0.82, 0.72),
-	"dark": Color(0.65, 0.62, 0.52),
-	"lake": Color(0.3, 0.5, 0.8),
-	"highlight": Color(0.4, 0.8, 0.4, 0.5),
-	"selected": Color(1.0, 1.0, 0.3, 0.5),
+	"light": Color(0.82, 0.76, 0.62),
+	"dark": Color(0.55, 0.48, 0.36),
+	"lake_light": Color(0.25, 0.45, 0.7),
+	"lake_dark": Color(0.18, 0.35, 0.58),
+	"board_border": Color(0.25, 0.2, 0.15),
+	"grid": Color(0.4, 0.35, 0.28, 0.4),
+	"highlight": Color(0.3, 0.75, 0.3, 0.45),
+	"selected": Color(1.0, 0.9, 0.2, 0.45),
 	"red_piece": Color(0.8, 0.2, 0.2),
 	"blue_piece": Color(0.2, 0.3, 0.8),
 	"hidden_piece": Color(0.5, 0.5, 0.5),
@@ -38,6 +41,13 @@ func _calculate_layout() -> void:
 func _draw() -> void:
 	_calculate_layout()
 
+	# Draw board border
+	var board_rect: Rect2 = Rect2(
+		board_offset - Vector2(3, 3),
+		Vector2(cell_size * BOARD_SIZE + 6, cell_size * BOARD_SIZE + 6),
+	)
+	draw_rect(board_rect, BOARD_COLORS["board_border"])
+
 	# Draw board squares
 	for col: int in range(BOARD_SIZE):
 		for row: int in range(BOARD_SIZE):
@@ -45,14 +55,24 @@ func _draw() -> void:
 			var rect: Rect2 = _get_cell_rect(pos)
 
 			# Cell color
-			var color: Color
 			if GameManager.board_state.is_lake(pos):
-				color = BOARD_COLORS["lake"]
-			elif (col + row) % 2 == 0:
-				color = BOARD_COLORS["light"]
+				# Lake gradient: lighter at top, darker at bottom
+				var t: float = float(row - 4) / 1.0  # 0.0 for row 4, 1.0 for row 5
+				var lake_color: Color = BOARD_COLORS["lake_light"].lerp(BOARD_COLORS["lake_dark"], clamp(t, 0.0, 1.0))
+				draw_rect(rect, lake_color)
+				# Wave lines on lake
+				var wave_y1: float = rect.position.y + rect.size.y * 0.35
+				var wave_y2: float = rect.position.y + rect.size.y * 0.65
+				var wave_color: Color = Color(1.0, 1.0, 1.0, 0.12)
+				draw_line(Vector2(rect.position.x + 4, wave_y1), Vector2(rect.position.x + rect.size.x - 4, wave_y1), wave_color, 1.0)
+				draw_line(Vector2(rect.position.x + 4, wave_y2), Vector2(rect.position.x + rect.size.x - 4, wave_y2), wave_color, 1.0)
 			else:
-				color = BOARD_COLORS["dark"]
-			draw_rect(rect, color)
+				var base: Color
+				if (col + row) % 2 == 0:
+					base = BOARD_COLORS["light"]
+				else:
+					base = BOARD_COLORS["dark"]
+				draw_rect(rect, base)
 
 			# Highlight selected piece
 			if selected_piece_id != -1:
@@ -64,12 +84,12 @@ func _draw() -> void:
 			if pos in valid_moves:
 				draw_rect(rect, BOARD_COLORS["highlight"])
 
-			# Highlight last enemy move with thick border
+			# Highlight last enemy move
 			if pos == last_enemy_move:
 				draw_rect(rect.grow(-4.0), BOARD_COLORS["last_move"], false, 8.0)
 
-			# Draw grid lines
-			draw_rect(rect, Color(0.3, 0.3, 0.3), false, 1.0)
+			# Subtle grid lines
+			draw_rect(rect, BOARD_COLORS["grid"], false, 1.0)
 
 	# Draw pieces
 	_draw_pieces()
