@@ -31,7 +31,10 @@ func _ready() -> void:
 
 func _calculate_layout() -> void:
 	var available: Vector2 = size
-	cell_size = min(available.x, available.y) / BOARD_SIZE
+	# Reserve space for frame border
+	var frame_margin: float = min(available.x, available.y) * 0.015 + 4
+	var usable: Vector2 = available - Vector2(frame_margin * 2, frame_margin * 2)
+	cell_size = min(usable.x, usable.y) / BOARD_SIZE
 	board_offset = Vector2(
 		(available.x - cell_size * BOARD_SIZE) / 2.0,
 		(available.y - cell_size * BOARD_SIZE) / 2.0,
@@ -41,12 +44,27 @@ func _calculate_layout() -> void:
 func _draw() -> void:
 	_calculate_layout()
 
-	# Draw board border
-	var board_rect: Rect2 = Rect2(
-		board_offset - Vector2(3, 3),
-		Vector2(cell_size * BOARD_SIZE + 6, cell_size * BOARD_SIZE + 6),
+	# Draw wooden frame border
+	var frame_width: float = cell_size * 0.15
+	var inner_rect: Rect2 = Rect2(
+		board_offset,
+		Vector2(cell_size * BOARD_SIZE, cell_size * BOARD_SIZE),
 	)
-	draw_rect(board_rect, BOARD_COLORS["board_border"])
+	# Outer dark edge
+	draw_rect(inner_rect.grow(frame_width + 2), Color(0.12, 0.08, 0.05))
+	# Main wood frame
+	draw_rect(inner_rect.grow(frame_width), Color(0.4, 0.28, 0.15))
+	# Inner lighter wood highlight
+	draw_rect(inner_rect.grow(frame_width * 0.6), Color(0.5, 0.36, 0.2))
+	# Inner bevel (dark edge where frame meets board)
+	draw_rect(inner_rect.grow(2), Color(0.2, 0.14, 0.08))
+	# Subtle highlight on top and left of frame
+	var outer: Rect2 = inner_rect.grow(frame_width)
+	draw_line(Vector2(outer.position.x, outer.position.y), Vector2(outer.position.x + outer.size.x, outer.position.y), Color(1.0, 1.0, 1.0, 0.08), 2.0)
+	draw_line(Vector2(outer.position.x, outer.position.y), Vector2(outer.position.x, outer.position.y + outer.size.y), Color(1.0, 1.0, 1.0, 0.06), 2.0)
+	# Shadow on bottom and right of frame
+	draw_line(Vector2(outer.position.x, outer.position.y + outer.size.y), Vector2(outer.position.x + outer.size.x, outer.position.y + outer.size.y), Color(0.0, 0.0, 0.0, 0.15), 2.0)
+	draw_line(Vector2(outer.position.x + outer.size.x, outer.position.y), Vector2(outer.position.x + outer.size.x, outer.position.y + outer.size.y), Color(0.0, 0.0, 0.0, 0.12), 2.0)
 
 	# Draw board squares
 	for col: int in range(BOARD_SIZE):
