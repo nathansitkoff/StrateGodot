@@ -265,6 +265,9 @@ func _draw_pieces() -> void:
 				from_rect.position.lerp(to_rect.position, t),
 				from_rect.size,
 			)
+		elif piece_id == _anim_piece_id and _combat_anim_state != CombatAnimState.NONE:
+			# During combat animation, keep attacker drawn at combat position
+			rect = _get_cell_rect(_anim_to)
 		else:
 			rect = _get_cell_rect(pos)
 		var piece_rect: Rect2 = rect.grow(-3.0)
