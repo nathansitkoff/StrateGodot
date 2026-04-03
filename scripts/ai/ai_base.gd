@@ -239,6 +239,10 @@ func score_position(bs: BoardState) -> float:
 		var rank: PieceData.Rank = piece["rank"]
 		var value: float = PIECE_VALUES[rank]
 
+		# Information bonus: hidden pieces are worth ~30% more
+		if not piece["revealed"]:
+			value *= 1.3
+
 		if piece["team"] == team:
 			my_material += value
 			if rank == PieceData.Rank.FLAG:
