@@ -6,9 +6,6 @@ signal back_pressed
 @onready var address_input: LineEdit = %AddressInput
 @onready var port_input: SpinBox = %PortInput
 @onready var connect_button: Button = %ConnectButton
-@onready var setup_row: HBoxContainer = %SetupRow
-@onready var randomize_button: Button = %RandomizeButton
-@onready var ready_button: Button = %ReadyButton
 @onready var network_back_button: Button = %NetworkBackButton
 @onready var status_label: Label = %NetworkStatusLabel
 
@@ -18,27 +15,26 @@ var left_hud: PanelContainer = null
 var hud: PanelContainer = null
 var turn_bar: PanelContainer = null
 var turn_label: Label = null
+var setup_phase: Control = null
+var main_scene: Control = null
 
 var _client: Node = null
 var _my_team: PieceData.Team = PieceData.Team.RED
 var _phase: String = "waiting"
 var _current_team: PieceData.Team = PieceData.Team.RED
 var _selected_piece_id: int = -1
+var _awaiting_own_move: bool = false
+var _pending_state: Dictionary = {}
 
 var _local_bs: BoardState = BoardState.new()
 var _local_caps: Dictionary = {
 	PieceData.Team.RED: [] as Array[PieceData.Rank],
 	PieceData.Team.BLUE: [] as Array[PieceData.Rank],
 }
-var _setup_pieces: Array = []
-var _awaiting_own_move: bool = false
-var _pending_state: Dictionary = {}
 
 
 func _ready() -> void:
 	connect_button.pressed.connect(_on_connect)
-	randomize_button.pressed.connect(_on_randomize)
-	ready_button.pressed.connect(_on_ready)
 	network_back_button.pressed.connect(func() -> void:
 		_cleanup()
 		visible = false
@@ -46,20 +42,21 @@ func _ready() -> void:
 	)
 
 
-func setup_refs(b: Control, lh: PanelContainer, h: PanelContainer, tb: PanelContainer, tl: Label) -> void:
+func setup_refs(b: Control, lh: PanelContainer, h: PanelContainer, tb: PanelContainer, tl: Label, sp: Control, ms: Control) -> void:
 	board = b
 	left_hud = lh
 	hud = h
 	turn_bar = tb
 	turn_label = tl
+	setup_phase = sp
+	main_scene = ms
 
 
 func show_connect() -> void:
 	connect_panel.visible = true
 	connect_button.visible = true
-	setup_row.visible = false
-	status_label.text = "Enter server address"
 	connect_button.disabled = false
+	status_label.text = "Enter server address"
 	color = Color(0.15, 0.15, 0.2, 1)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	visible = true
@@ -80,7 +77,6 @@ func _on_connect() -> void:
 	_client.phase_changed.connect(_on_phase_changed)
 	_client.turn_changed.connect(_on_turn_changed)
 	_client.state_updated.connect(_on_state_updated)
-	_client.setup_state_received.connect(_on_setup_state)
 	_client.move_made.connect(_on_move_made)
 	_client.combat_occurred.connect(_on_combat)
 	_client.game_ended.connect(_on_game_ended)
@@ -91,24 +87,20 @@ func _on_connect() -> void:
 	connect_button.disabled = true
 
 
-func _on_randomize() -> void:
-	if _client != null:
-		_client.send_randomize()
-
-
-func _on_ready() -> void:
-	if _client != null:
-		_client.send_ready()
-		ready_button.disabled = true
-		status_label.text = "Waiting for opponent..."
-
-
 func _cleanup() -> void:
 	if _client != null:
 		_client.queue_free()
 		_client = null
+	setup_phase.visible = false
+	# Reconnect main_scene's setup handler
+	if main_scene != null and not setup_phase.setup_complete.is_connected(main_scene._on_setup_complete):
+		setup_phase.setup_complete.connect(main_scene._on_setup_complete)
+	# Disconnect our handler
+	if setup_phase.setup_complete.is_connected(_on_setup_complete):
+		setup_phase.setup_complete.disconnect(_on_setup_complete)
 	_hide_game_ui()
 	connect_button.disabled = false
+	mouse_filter = Control.MOUSE_FILTER_STOP
 
 
 func _show_game_ui() -> void:
@@ -120,7 +112,7 @@ func _show_game_ui() -> void:
 	board.offset_top = 36
 	GameManager.board_state = _local_bs
 	GameManager.captured_pieces = _local_caps
-	GameManager.game_mode = GameManager.GameMode.LOCAL_2P  # use current_team for viewing
+	GameManager.game_mode = GameManager.GameMode.LOCAL_2P
 	GameManager.current_team = _my_team
 	left_hud.update_remaining(PieceData.Team.RED)
 	hud.update_enemy_remaining(_my_team)
@@ -165,12 +157,13 @@ func _on_connected(team: PieceData.Team) -> void:
 
 func _on_disconnected() -> void:
 	if _phase == "game_over":
-		return  # Already handled
+		return
 	status_label.text = "Disconnected from server."
+	setup_phase.visible = false
 	connect_panel.visible = true
-	setup_row.visible = false
 	connect_button.visible = false
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	color = Color(0.15, 0.15, 0.2, 1)
 	if _client != null:
 		_client.queue_free()
 		_client = null
@@ -180,26 +173,23 @@ func _on_phase_changed(phase: String) -> void:
 	_phase = phase
 	match phase:
 		"setup":
-			# Both players place simultaneously
-			connect_button.visible = false
-			setup_row.visible = true
-			ready_button.disabled = false
-			status_label.text = "Place your pieces: Randomize, then Ready"
-			# Show board, make click-through
-			color = Color(0, 0, 0, 0)
-			mouse_filter = Control.MOUSE_FILTER_IGNORE
-			_show_game_ui()
+			# Hide network overlay, show normal setup phase
+			visible = false
+			# Disconnect main_scene's setup handler so it doesn't trigger turn switches
+			if setup_phase.setup_complete.is_connected(main_scene._on_setup_complete):
+				setup_phase.setup_complete.disconnect(main_scene._on_setup_complete)
+			# Use the standard setup UI — placement is fully local
+			GameManager.board_state.reset()
 			GameManager.current_phase = GameManager.GamePhase.SETUP_RED if _my_team == PieceData.Team.RED else GameManager.GamePhase.SETUP_BLUE
-			turn_label.text = "Setup — %s" % PieceData.get_team_name(_my_team)
-			turn_label.add_theme_color_override("font_color", Color(0.9, 0.3, 0.3) if _my_team == PieceData.Team.RED else Color(0.3, 0.4, 0.9))
+			setup_phase.start_setup(_my_team)
+			# Connect our setup_complete handler
+			if not setup_phase.setup_complete.is_connected(_on_setup_complete):
+				setup_phase.setup_complete.connect(_on_setup_complete)
 		"play":
-			setup_row.visible = false
-			connect_panel.visible = false
-			# Keep phase as MENU so play_controller doesn't intercept clicks
-			GameManager.current_phase = GameManager.GamePhase.MENU
-			# Make ourselves transparent and click-through
-			color = Color(0, 0, 0, 0)
+			setup_phase.visible = false
+			visible = false
 			mouse_filter = Control.MOUSE_FILTER_IGNORE
+			GameManager.current_phase = GameManager.GamePhase.MENU
 			_show_game_ui()
 			_update_turn_label()
 			if not board.square_clicked.is_connected(_on_board_click):
@@ -208,6 +198,33 @@ func _on_phase_changed(phase: String) -> void:
 				board.move_ready.connect(_on_move_ready)
 		"game_over":
 			pass
+
+
+func _on_setup_complete(_team: PieceData.Team) -> void:
+	# Send full placement to server
+	if _client == null:
+		return
+	var pieces: Array[Dictionary] = []
+	for piece_id: int in GameManager.board_state.pieces:
+		var p: Dictionary = GameManager.board_state.pieces[piece_id]
+		if p["team"] == _my_team:
+			pieces.append({
+				"rank": p["rank"],
+				"x": p["pos"].x,
+				"y": p["pos"].y,
+			})
+	_client._send({
+		"type": "submit_placement",
+		"pieces": pieces,
+	})
+	# Show waiting message
+	setup_phase.visible = false
+	visible = true
+	connect_panel.visible = true
+	connect_button.visible = false
+	status_label.text = "Waiting for opponent to finish placing..."
+	color = Color(0.15, 0.15, 0.2, 1)
+	mouse_filter = Control.MOUSE_FILTER_STOP
 
 
 func _on_turn_changed(team: PieceData.Team) -> void:
@@ -224,7 +241,6 @@ func _on_state_updated(pieces: Array, current_team: PieceData.Team, captured_red
 		"captured_red": captured_red,
 		"captured_blue": captured_blue,
 	}
-	# If animation is in progress, defer applying state until it finishes
 	if board._anim_progress < 1.0 or board._combat_anim_state != board.CombatAnimState.NONE:
 		if not board.move_ready.is_connected(_apply_pending_state):
 			board.move_ready.connect(_apply_pending_state, CONNECT_ONE_SHOT)
@@ -246,19 +262,7 @@ func _apply_pending_state_now() -> void:
 	_update_turn_label()
 
 
-func _on_setup_state(pieces: Array) -> void:
-	_setup_pieces = pieces
-	_local_bs.reset()
-	for p: Dictionary in pieces:
-		var pid: int = _local_bs.add_piece(int(p["rank"]), int(p["team"]) as PieceData.Team, Vector2i(int(p["x"]), int(p["y"])))
-		_local_bs.pieces[pid]["revealed"] = true
-	GameManager.board_state = _local_bs
-	GameManager.captured_pieces = _local_caps
-	board.refresh()
-
-
 func _on_move_made(move_team: PieceData.Team, from: Vector2i, to: Vector2i) -> void:
-	# Animate the move on our board (both own and opponent moves)
 	var piece_id: int = _local_bs.get_piece_at(from)
 	if piece_id != -1:
 		board.animate_move_with_combat(piece_id, from, to)
@@ -282,11 +286,11 @@ func _on_game_ended(winner: PieceData.Team, reason: String) -> void:
 		turn_label.text = "You win! (%s)" % reason
 	else:
 		turn_label.text = "%s wins. (%s)" % [PieceData.get_team_name(winner), reason]
-	# Show exit prompt
+	visible = true
 	connect_panel.visible = true
-	setup_row.visible = false
 	connect_button.visible = false
 	status_label.text = turn_label.text
+	color = Color(0, 0, 0, 0)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 
 
@@ -315,7 +319,6 @@ func _on_board_click(pos: Vector2i) -> void:
 			var from: Vector2i = selected["pos"]
 			board.clear_selection()
 			_selected_piece_id = -1
-			# Send move to server immediately, animate locally
 			_awaiting_own_move = true
 			_client.send_move(from, pos)
 			return
@@ -339,7 +342,6 @@ func _on_board_click(pos: Vector2i) -> void:
 
 
 func _on_move_ready(_from: Vector2i, _to: Vector2i) -> void:
-	# Move already sent to server on click; this fires after animation completes
 	pass
 
 

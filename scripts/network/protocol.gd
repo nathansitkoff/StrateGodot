@@ -2,12 +2,8 @@ class_name Protocol
 extends RefCounted
 
 # Message types: Client → Server
-const PLACE: String = "place"
-const REMOVE_PIECE: String = "remove"
-const READY: String = "ready"
+const SUBMIT_PLACEMENT: String = "submit_placement"
 const MOVE: String = "move"
-const RANDOMIZE: String = "randomize"
-const PLACEMENT_STRATEGY: String = "placement_strategy"
 
 # Message types: Server → Client
 const MOVE_MADE: String = "move_made"
@@ -18,7 +14,6 @@ const TURN_CHANGE: String = "turn_change"
 const COMBAT: String = "combat"
 const GAME_OVER: String = "game_over"
 const ERROR: String = "error"
-const SETUP_STATE: String = "setup_state"
 
 
 static func encode(msg: Dictionary) -> String:

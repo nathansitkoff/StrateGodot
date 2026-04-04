@@ -245,7 +245,7 @@ func _on_headless_back() -> void:
 
 
 func _on_network_selected() -> void:
-	network_game.setup_refs(board, left_hud, hud, turn_bar, turn_label)
+	network_game.setup_refs(board, left_hud, hud, turn_bar, turn_label, setup_phase, self)
 	network_game.show_connect()
 
 

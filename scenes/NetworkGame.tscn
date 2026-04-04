@@ -76,25 +76,6 @@ text = "Connect"
 layout_mode = 2
 custom_minimum_size = Vector2(0, 10)
 
-[node name="SetupRow" type="HBoxContainer" parent="ConnectPanel"]
-unique_name_in_owner = true
-layout_mode = 2
-visible = false
-
-[node name="RandomizeButton" type="Button" parent="ConnectPanel/SetupRow"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-custom_minimum_size = Vector2(0, 36)
-text = "Randomize"
-
-[node name="ReadyButton" type="Button" parent="ConnectPanel/SetupRow"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-custom_minimum_size = Vector2(0, 36)
-text = "Ready"
-
 [node name="NetworkStatusLabel" type="Label" parent="ConnectPanel"]
 unique_name_in_owner = true
 layout_mode = 2

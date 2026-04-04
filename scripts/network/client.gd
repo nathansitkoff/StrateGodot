@@ -9,7 +9,6 @@ signal disconnected_from_server
 signal phase_changed(phase: String)
 signal turn_changed(team: PieceData.Team)
 signal state_updated(pieces: Array, current_team: PieceData.Team, captured_red: Array, captured_blue: Array)
-signal setup_state_received(pieces: Array)
 signal combat_occurred(info: Dictionary)
 signal move_made(team: PieceData.Team, from: Vector2i, to: Vector2i)
 signal game_ended(winner: PieceData.Team, reason: String)
@@ -66,8 +65,6 @@ func _handle_message(msg: Dictionary) -> void:
 				msg["captured_red"],
 				msg["captured_blue"],
 			)
-		Proto.SETUP_STATE:
-			setup_state_received.emit(msg["pieces"])
 		Proto.MOVE_MADE:
 			move_made.emit(
 				int(msg["team"]) as PieceData.Team,
@@ -86,28 +83,8 @@ func _handle_message(msg: Dictionary) -> void:
 # --- Commands to server ---
 
 
-func send_place(rank: PieceData.Rank, pos: Vector2i) -> void:
-	_send({ "type": Proto.PLACE, "rank": rank, "x": pos.x, "y": pos.y })
-
-
-func send_remove(pos: Vector2i) -> void:
-	_send({ "type": Proto.REMOVE_PIECE, "x": pos.x, "y": pos.y })
-
-
-func send_ready() -> void:
-	_send({ "type": Proto.READY })
-
-
 func send_move(from: Vector2i, to: Vector2i) -> void:
 	_send({ "type": Proto.MOVE, "from_x": from.x, "from_y": from.y, "to_x": to.x, "to_y": to.y })
-
-
-func send_randomize() -> void:
-	_send({ "type": Proto.RANDOMIZE })
-
-
-func send_placement_strategy(strategy: int) -> void:
-	_send({ "type": Proto.PLACEMENT_STRATEGY, "strategy": strategy })
 
 
 func _send(msg: Dictionary) -> void:

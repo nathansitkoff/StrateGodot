@@ -122,8 +122,6 @@ func _start_game() -> void:
 
 	_phase = "setup"
 	_broadcast({ "type": Proto.PHASE_CHANGE, "phase": "setup" })
-	_send_setup_state_to_team(PieceData.Team.RED)
-	_send_setup_state_to_team(PieceData.Team.BLUE)
 
 
 func _handle_message(peer_id: int, msg: Dictionary) -> void:
@@ -132,88 +130,42 @@ func _handle_message(peer_id: int, msg: Dictionary) -> void:
 	var team: PieceData.Team = _peers[peer_id]["team"]
 
 	match msg.get("type", ""):
-		Proto.PLACE:
-			_handle_place(team, msg)
-		Proto.REMOVE_PIECE:
-			_handle_remove(team, msg)
-		Proto.READY:
-			_handle_ready(team)
+		Proto.SUBMIT_PLACEMENT:
+			_handle_submit_placement(team, msg)
 		Proto.MOVE:
 			_handle_move(team, msg)
-		Proto.RANDOMIZE:
-			_handle_randomize(team)
-		Proto.PLACEMENT_STRATEGY:
-			_handle_placement_strategy(team, msg)
 
 
-func _handle_place(team: PieceData.Team, msg: Dictionary) -> void:
-	if not _is_setup_turn(team):
+func _handle_submit_placement(team: PieceData.Team, msg: Dictionary) -> void:
+	if _phase != "setup":
 		return
-	var rank: int = int(msg.get("rank", 0))
-	var pos: Vector2i = Vector2i(int(msg.get("x", 0)), int(msg.get("y", 0)))
+	if (team == PieceData.Team.RED and _red_ready) or (team == PieceData.Team.BLUE and _blue_ready):
+		return
+
+	var pieces: Array = msg.get("pieces", [])
+	if pieces.size() != PieceData.get_total_pieces():
+		_send_to_team(team, { "type": Proto.ERROR, "message": "Invalid piece count: %d" % pieces.size() })
+		return
+
+	# Place pieces on the board
 	var valid_rows: Array[int] = _board_state.get_setup_rows(team)
-
-	if pos.y not in valid_rows or not _board_state.is_valid_cell(pos):
-		return
-	if _board_state.get_piece_at(pos) != -1:
-		return
-
-	var placed_count: int = 0
-	for pid: int in _board_state.pieces:
-		var p: Dictionary = _board_state.pieces[pid]
-		if p["team"] == team and p["rank"] == rank:
-			placed_count += 1
-	if placed_count >= PieceData.RANK_INFO[rank]["count"]:
-		return
-
-	_board_state.add_piece(rank, team, pos)
-	_send_setup_state_to_team(team)
-
-
-func _handle_remove(team: PieceData.Team, msg: Dictionary) -> void:
-	if not _is_setup_turn(team):
-		return
-	var pos: Vector2i = Vector2i(int(msg.get("x", 0)), int(msg.get("y", 0)))
-	var piece_id: int = _board_state.get_piece_at(pos)
-	if piece_id == -1 or _board_state.pieces[piece_id]["team"] != team:
-		return
-	_board_state.remove_piece(piece_id)
-	_send_setup_state_to_team(team)
-
-
-func _handle_randomize(team: PieceData.Team) -> void:
-	if not _is_setup_turn(team):
-		return
-	_clear_team_pieces(team)
-	Placement.place(Placement.Strategy.CLUSTERED_DEFENSE, _board_state, team)
-	_send_setup_state_to_team(team)
-
-
-func _handle_placement_strategy(team: PieceData.Team, msg: Dictionary) -> void:
-	if not _is_setup_turn(team):
-		return
-	var strategy: int = int(msg.get("strategy", 0))
-	_clear_team_pieces(team)
-	Placement.place(strategy as Placement.Strategy, _board_state, team)
-	_send_setup_state_to_team(team)
-
-
-func _handle_ready(team: PieceData.Team) -> void:
-	if not _is_setup_turn(team):
-		return
-	var count: int = 0
-	for pid: int in _board_state.pieces:
-		if _board_state.pieces[pid]["team"] == team:
-			count += 1
-	if count < PieceData.get_total_pieces():
-		return
+	for p: Dictionary in pieces:
+		var rank: int = int(p["rank"])
+		var pos: Vector2i = Vector2i(int(p["x"]), int(p["y"]))
+		if pos.y not in valid_rows or not _board_state.is_valid_cell(pos):
+			_send_to_team(team, { "type": Proto.ERROR, "message": "Invalid piece position" })
+			return
+		if _board_state.get_piece_at(pos) != -1:
+			_send_to_team(team, { "type": Proto.ERROR, "message": "Overlapping piece" })
+			return
+		_board_state.add_piece(rank, team, pos)
 
 	if team == PieceData.Team.RED:
 		_red_ready = true
-		print("Red is ready")
+		print("Red submitted placement")
 	else:
 		_blue_ready = true
-		print("Blue is ready")
+		print("Blue submitted placement")
 
 	# Both ready — start play
 	if _red_ready and _blue_ready:
@@ -296,31 +248,6 @@ func _end_game(winner: PieceData.Team, reason: String) -> void:
 # --- Helpers ---
 
 
-func _is_setup_turn(team: PieceData.Team) -> bool:
-	if _phase != "setup":
-		return false
-	# Check if this team hasn't readied yet
-	if team == PieceData.Team.RED:
-		return not _red_ready
-	return not _blue_ready
-
-
-func _clear_team_pieces(team: PieceData.Team) -> void:
-	var to_remove: Array[int] = []
-	for pid: int in _board_state.pieces:
-		if _board_state.pieces[pid]["team"] == team:
-			to_remove.append(pid)
-	for pid: int in to_remove:
-		_board_state.remove_piece(pid)
-
-
-func _send_setup_state_to_team(team: PieceData.Team) -> void:
-	var pieces: Array[Dictionary] = []
-	for pid: int in _board_state.pieces:
-		var p: Dictionary = _board_state.pieces[pid]
-		if p["team"] == team:
-			pieces.append({ "id": pid, "rank": p["rank"], "team": p["team"], "x": p["pos"].x, "y": p["pos"].y })
-	_send_to_team(team, { "type": Proto.SETUP_STATE, "pieces": pieces })
 
 
 func _send_game_state_to_all() -> void:
