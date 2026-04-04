@@ -681,3 +681,38 @@ func refresh() -> void:
 		last_enemy_move = new_last_move
 		_last_move_pulse_time = 0.0
 	queue_redraw()
+
+
+# Shared click-to-select-and-move logic.
+# bs: the board state to read from
+# my_team: the player's team (for filtering selectable pieces)
+# move_fn: called with (from, to) when a move is selected
+func handle_click(pos: Vector2i, bs: BoardState, my_team: PieceData.Team, move_fn: Callable) -> void:
+	var clicked_id: int = bs.get_piece_at(pos)
+
+	if selected_piece_id != -1:
+		var selected: Dictionary = bs.pieces.get(selected_piece_id, {})
+
+		if clicked_id == selected_piece_id:
+			clear_selection()
+			return
+
+		if pos in valid_moves:
+			var from: Vector2i = selected["pos"]
+			clear_selection()
+			move_fn.call(from, pos)
+			return
+
+		if clicked_id != -1:
+			var clicked: Dictionary = bs.pieces[clicked_id]
+			if clicked["team"] == my_team and PieceData.can_move(clicked["rank"]):
+				select_piece(clicked_id)
+				return
+
+		clear_selection()
+		return
+
+	if clicked_id != -1:
+		var piece: Dictionary = bs.pieces[clicked_id]
+		if piece["team"] == my_team and PieceData.can_move(piece["rank"]):
+			select_piece(clicked_id)

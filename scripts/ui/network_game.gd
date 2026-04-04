@@ -22,7 +22,6 @@ var _client: Node = null
 var _my_team: PieceData.Team = PieceData.Team.RED
 var _phase: String = "waiting"
 var _current_team: PieceData.Team = PieceData.Team.RED
-var _selected_piece_id: int = -1
 var _awaiting_own_move: bool = false
 var _pending_state: Dictionary = {}
 
@@ -229,7 +228,6 @@ func _on_setup_complete(_team: PieceData.Team) -> void:
 
 func _on_turn_changed(team: PieceData.Team) -> void:
 	_current_team = team
-	_selected_piece_id = -1
 	board.clear_selection()
 	_update_turn_label()
 
@@ -304,41 +302,12 @@ func _on_error(message: String) -> void:
 func _on_board_click(pos: Vector2i) -> void:
 	if _phase != "play" or _current_team != _my_team:
 		return
+	board.handle_click(pos, _local_bs, _my_team, _do_network_move)
 
-	var clicked_id: int = _local_bs.get_piece_at(pos)
 
-	if _selected_piece_id != -1:
-		var selected: Dictionary = _local_bs.pieces.get(_selected_piece_id, {})
-
-		if clicked_id == _selected_piece_id:
-			board.clear_selection()
-			_selected_piece_id = -1
-			return
-
-		if pos in board.valid_moves:
-			var from: Vector2i = selected["pos"]
-			board.clear_selection()
-			_selected_piece_id = -1
-			_awaiting_own_move = true
-			_client.send_move(from, pos)
-			return
-
-		if clicked_id != -1:
-			var clicked: Dictionary = _local_bs.pieces[clicked_id]
-			if clicked["team"] == _my_team and PieceData.can_move(clicked["rank"]):
-				_selected_piece_id = clicked_id
-				board.select_piece(clicked_id)
-				return
-
-		board.clear_selection()
-		_selected_piece_id = -1
-		return
-
-	if clicked_id != -1:
-		var piece: Dictionary = _local_bs.pieces[clicked_id]
-		if piece["team"] == _my_team and PieceData.can_move(piece["rank"]):
-			_selected_piece_id = clicked_id
-			board.select_piece(clicked_id)
+func _do_network_move(from: Vector2i, to: Vector2i) -> void:
+	_awaiting_own_move = true
+	_client.send_move(from, to)
 
 
 func _on_move_ready(_from: Vector2i, _to: Vector2i) -> void:
