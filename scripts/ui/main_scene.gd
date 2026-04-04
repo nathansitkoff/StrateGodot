@@ -243,10 +243,13 @@ func _on_headless_back() -> void:
 
 
 func _on_network_selected() -> void:
+	network_game.setup_refs(board, left_hud, hud, turn_bar, turn_label)
 	network_game.show_connect()
 
 
 func _on_network_back() -> void:
+	board.offset_left = 0
+	board.offset_top = 0
 	main_menu.visible = true
 
 

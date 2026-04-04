@@ -16,6 +16,8 @@ var _captured: Dictionary = {
 var _current_team: PieceData.Team = PieceData.Team.RED
 var _phase: String = "waiting"
 var _recorder: GameRecorder = null
+var _red_ready: bool = false
+var _blue_ready: bool = false
 
 
 func start(port: int) -> void:
@@ -108,17 +110,20 @@ func _on_peer_disconnected(peer_id: int) -> void:
 
 
 func _start_game() -> void:
-	print("Both players connected. Starting game.")
+	print("Both players connected. Starting setup.")
 	_board_state.reset()
 	_captured[PieceData.Team.RED].clear()
 	_captured[PieceData.Team.BLUE].clear()
+	_red_ready = false
+	_blue_ready = false
 
 	_recorder = GameRecorder.new()
 	_recorder.start_recording("Network", "Human", "Human", PieceData.Team.RED)
 
-	_phase = "setup_red"
-	_broadcast({ "type": Proto.PHASE_CHANGE, "phase": "setup_red" })
+	_phase = "setup"
+	_broadcast({ "type": Proto.PHASE_CHANGE, "phase": "setup" })
 	_send_setup_state_to_team(PieceData.Team.RED)
+	_send_setup_state_to_team(PieceData.Team.BLUE)
 
 
 func _handle_message(peer_id: int, msg: Dictionary) -> void:
@@ -203,17 +208,22 @@ func _handle_ready(team: PieceData.Team) -> void:
 	if count < PieceData.get_total_pieces():
 		return
 
-	if team == PieceData.Team.RED and _phase == "setup_red":
-		_phase = "setup_blue"
-		_broadcast({ "type": Proto.PHASE_CHANGE, "phase": "setup_blue" })
-		_send_setup_state_to_team(PieceData.Team.BLUE)
-	elif team == PieceData.Team.BLUE and _phase == "setup_blue":
+	if team == PieceData.Team.RED:
+		_red_ready = true
+		print("Red is ready")
+	else:
+		_blue_ready = true
+		print("Blue is ready")
+
+	# Both ready — start play
+	if _red_ready and _blue_ready:
 		_recorder.record_placements_from_board(_board_state)
 		_phase = "play"
 		_current_team = PieceData.Team.RED
 		_broadcast({ "type": Proto.PHASE_CHANGE, "phase": "play" })
 		_send_game_state_to_all()
 		_broadcast({ "type": Proto.TURN_CHANGE, "team": _current_team })
+		print("Both ready. Game started.")
 
 
 func _handle_move(team: PieceData.Team, msg: Dictionary) -> void:
@@ -276,8 +286,12 @@ func _end_game(winner: PieceData.Team, reason: String) -> void:
 
 
 func _is_setup_turn(team: PieceData.Team) -> bool:
-	return (team == PieceData.Team.RED and _phase == "setup_red") or \
-		   (team == PieceData.Team.BLUE and _phase == "setup_blue")
+	if _phase != "setup":
+		return false
+	# Check if this team hasn't readied yet
+	if team == PieceData.Team.RED:
+		return not _red_ready
+	return not _blue_ready
 
 
 func _clear_team_pieces(team: PieceData.Team) -> void:
