@@ -20,6 +20,7 @@ GameManager="*res://scripts/autoloads/game_manager.gd"
 AudioManager="*res://scripts/autoloads/audio_manager.gd"
 SaveSystem="*res://scripts/autoloads/save_system.gd"
 TestRunner="*res://scripts/test/test_runner.gd"
+ServerMain="*res://scripts/network/server_main.gd"
 
 [display]
 

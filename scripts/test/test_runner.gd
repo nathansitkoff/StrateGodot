@@ -8,6 +8,9 @@ func _ready() -> void:
 	if not DisplayServer.get_name() == "headless":
 		queue_free()
 		return
+	if "--server" in OS.get_cmdline_user_args():
+		queue_free()
+		return
 
 	await get_tree().process_frame
 	_run_tests()

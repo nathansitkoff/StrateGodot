@@ -1,4 +1,4 @@
-[gd_scene load_steps=13 format=3 uid="uid://main001"]
+[gd_scene load_steps=14 format=3 uid="uid://main001"]
 
 [ext_resource type="Script" path="res://scripts/ui/main_scene.gd" id="1"]
 [ext_resource type="PackedScene" path="res://scenes/Board.tscn" id="2"]
@@ -12,6 +12,7 @@
 [ext_resource type="PackedScene" path="res://scenes/GameOptions.tscn" id="10"]
 [ext_resource type="PackedScene" path="res://scenes/ReplayBrowser.tscn" id="11"]
 [ext_resource type="PackedScene" path="res://scenes/ReplayViewer.tscn" id="12"]
+[ext_resource type="PackedScene" path="res://scenes/NetworkGame.tscn" id="13"]
 
 [node name="Main" type="Control"]
 layout_mode = 3
@@ -92,6 +93,11 @@ layout_mode = 1
 visible = false
 
 [node name="ReplayViewer" parent="." instance=ExtResource("12")]
+unique_name_in_owner = true
+layout_mode = 1
+visible = false
+
+[node name="NetworkGame" parent="." instance=ExtResource("13")]
 unique_name_in_owner = true
 layout_mode = 1
 visible = false

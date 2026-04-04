@@ -12,6 +12,7 @@ extends Control
 @onready var headless_test: ColorRect = %HeadlessTest
 @onready var replay_browser: ColorRect = %ReplayBrowser
 @onready var replay_viewer: Control = %ReplayViewer
+@onready var network_game: ColorRect = %NetworkGame
 @onready var main_menu: ColorRect = %MainMenu
 @onready var quit_button: Button = %QuitButton
 
@@ -37,6 +38,8 @@ func _ready() -> void:
 	main_menu.mode_selected.connect(_on_mode_selected)
 	main_menu.headless_selected.connect(_on_headless_selected)
 	main_menu.replays_selected.connect(_on_replays_selected)
+	main_menu.network_selected.connect(_on_network_selected)
+	network_game.back_pressed.connect(_on_network_back)
 	game_options.options_confirmed.connect(_on_options_confirmed)
 	headless_test.back_pressed.connect(_on_headless_back)
 	replay_browser.back_pressed.connect(_on_replay_browser_back)
@@ -236,6 +239,14 @@ func _on_headless_selected() -> void:
 
 
 func _on_headless_back() -> void:
+	main_menu.visible = true
+
+
+func _on_network_selected() -> void:
+	network_game.show_connect()
+
+
+func _on_network_back() -> void:
 	main_menu.visible = true
 
 
