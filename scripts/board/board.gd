@@ -51,10 +51,17 @@ var _last_move_pulse_time: float = 0.0
 
 signal animation_finished
 signal combat_animation_finished
+# Fires when slide + any combat animation is complete and the move can be executed
+signal move_ready(from: Vector2i, to: Vector2i)
+
+var _move_from: Vector2i = Vector2i.ZERO
+var _move_to: Vector2i = Vector2i.ZERO
 
 
 func _ready() -> void:
 	_calculate_layout()
+	animation_finished.connect(_on_slide_finished)
+	combat_animation_finished.connect(_on_combat_finished)
 
 
 func _process(delta: float) -> void:
@@ -137,6 +144,50 @@ func animate_move(piece_id: int, from: Vector2i, to: Vector2i) -> void:
 	_anim_progress = 0.0
 	set_process(true)
 	queue_redraw()
+
+
+# Animate a move with automatic combat handling. Emits move_ready when done.
+func animate_move_with_combat(piece_id: int, from: Vector2i, to: Vector2i) -> void:
+	_move_from = from
+	_move_to = to
+	animate_move(piece_id, from, to)
+
+
+func _on_slide_finished() -> void:
+	# Called when slide animation ends — check for combat
+	if _move_from == Vector2i.ZERO and _move_to == Vector2i.ZERO:
+		return
+	var target_id: int = GameManager.board_state.get_piece_at(_move_to)
+	if target_id != -1:
+		var attacker_id: int = GameManager.board_state.get_piece_at(_move_from)
+		var atk_rank: PieceData.Rank = GameManager.board_state.pieces[attacker_id]["rank"]
+		var def_rank: PieceData.Rank = GameManager.board_state.pieces[target_id]["rank"]
+		var result: Combat.Result = Combat.resolve(atk_rank, def_rank)
+		var loser1: int = -1
+		var loser2: int = -1
+		match result:
+			Combat.Result.ATTACKER_WINS:
+				loser1 = target_id
+			Combat.Result.DEFENDER_WINS:
+				loser1 = attacker_id
+			Combat.Result.BOTH_DIE:
+				loser1 = target_id
+				loser2 = attacker_id
+		start_combat_animation(_move_to, loser1, loser2)
+	else:
+		_emit_move_ready()
+
+
+func _on_combat_finished() -> void:
+	_emit_move_ready()
+
+
+func _emit_move_ready() -> void:
+	var from: Vector2i = _move_from
+	var to: Vector2i = _move_to
+	_move_from = Vector2i.ZERO
+	_move_to = Vector2i.ZERO
+	move_ready.emit(from, to)
 
 
 func _calculate_layout() -> void:
