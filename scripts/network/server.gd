@@ -66,7 +66,7 @@ func _process(_delta: float) -> void:
 			to_remove.append(peer_id)
 
 	for peer_id: int in to_remove:
-		_peers.erase(peer_id)
+		_peers.erase(peer_id)  # May already be erased by _on_peer_disconnected
 
 
 func _assign_team(peer_id: int) -> void:
@@ -101,11 +101,11 @@ func _on_peer_disconnected(peer_id: int) -> void:
 		return
 	var team_name: String = PieceData.get_team_name(_peers[peer_id]["team"])
 	print("%s disconnected" % team_name)
-	if _phase == "play":
-		var winner: PieceData.Team = PieceData.Team.RED
-		for pid: int in _peers:
-			if pid != peer_id and _peers[pid]["team"] != -1:
-				winner = _peers[pid]["team"]
+	# Remove disconnected peer before broadcasting so messages only go to remaining player
+	var disconnected_team: PieceData.Team = _peers[peer_id]["team"]
+	_peers.erase(peer_id)
+	if _phase == "play" or _phase == "setup":
+		var winner: PieceData.Team = PieceData.Team.RED if disconnected_team == PieceData.Team.BLUE else PieceData.Team.BLUE
 		_end_game(winner, "disconnect")
 
 

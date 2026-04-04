@@ -225,6 +225,8 @@ func _exit_to_menu() -> void:
 	turn_switch.visible = false
 	game_over.visible = false
 	game_options.visible = false
+	network_game.visible = false
+	network_game._cleanup()
 	board.offset_left = 0
 	board.offset_top = 0
 	board.offset_bottom = 0

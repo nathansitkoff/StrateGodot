@@ -164,9 +164,16 @@ func _on_connected(team: PieceData.Team) -> void:
 
 
 func _on_disconnected() -> void:
+	if _phase == "game_over":
+		return  # Already handled
 	status_label.text = "Disconnected from server."
-	_cleanup()
-	show_connect()
+	connect_panel.visible = true
+	setup_row.visible = false
+	connect_button.visible = false
+	mouse_filter = Control.MOUSE_FILTER_STOP
+	if _client != null:
+		_client.queue_free()
+		_client = null
 
 
 func _on_phase_changed(phase: String) -> void:
@@ -270,10 +277,17 @@ func _on_combat(info: Dictionary) -> void:
 
 
 func _on_game_ended(winner: PieceData.Team, reason: String) -> void:
+	_phase = "game_over"
 	if winner == _my_team:
 		turn_label.text = "You win! (%s)" % reason
 	else:
 		turn_label.text = "%s wins. (%s)" % [PieceData.get_team_name(winner), reason]
+	# Show exit prompt
+	connect_panel.visible = true
+	setup_row.visible = false
+	connect_button.visible = false
+	status_label.text = turn_label.text
+	mouse_filter = Control.MOUSE_FILTER_STOP
 
 
 func _on_error(message: String) -> void:
