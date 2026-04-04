@@ -11,6 +11,7 @@ signal turn_changed(team: PieceData.Team)
 signal state_updated(pieces: Array, current_team: PieceData.Team, captured_red: Array, captured_blue: Array)
 signal setup_state_received(pieces: Array)
 signal combat_occurred(info: Dictionary)
+signal move_made(team: PieceData.Team, from: Vector2i, to: Vector2i)
 signal game_ended(winner: PieceData.Team, reason: String)
 signal error_received(message: String)
 
@@ -67,6 +68,12 @@ func _handle_message(msg: Dictionary) -> void:
 			)
 		Proto.SETUP_STATE:
 			setup_state_received.emit(msg["pieces"])
+		Proto.MOVE_MADE:
+			move_made.emit(
+				int(msg["team"]) as PieceData.Team,
+				Vector2i(int(msg["from_x"]), int(msg["from_y"])),
+				Vector2i(int(msg["to_x"]), int(msg["to_y"])),
+			)
 		Proto.COMBAT:
 			combat_occurred.emit(msg)
 		Proto.GAME_OVER:

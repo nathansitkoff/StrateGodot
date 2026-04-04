@@ -31,6 +31,8 @@ var _local_caps: Dictionary = {
 	PieceData.Team.BLUE: [] as Array[PieceData.Rank],
 }
 var _setup_pieces: Array = []
+var _awaiting_own_move: bool = false
+var _pending_state: Dictionary = {}
 
 
 func _ready() -> void:
@@ -79,6 +81,7 @@ func _on_connect() -> void:
 	_client.turn_changed.connect(_on_turn_changed)
 	_client.state_updated.connect(_on_state_updated)
 	_client.setup_state_received.connect(_on_setup_state)
+	_client.move_made.connect(_on_move_made)
 	_client.combat_occurred.connect(_on_combat)
 	_client.game_ended.connect(_on_game_ended)
 	_client.error_received.connect(_on_error)
@@ -208,8 +211,30 @@ func _on_turn_changed(team: PieceData.Team) -> void:
 
 
 func _on_state_updated(pieces: Array, current_team: PieceData.Team, captured_red: Array, captured_blue: Array) -> void:
-	_current_team = current_team
-	_rebuild_state(pieces, captured_red, captured_blue)
+	_pending_state = {
+		"pieces": pieces,
+		"current_team": current_team,
+		"captured_red": captured_red,
+		"captured_blue": captured_blue,
+	}
+	# If animation is in progress, defer applying state until it finishes
+	if board._anim_progress < 1.0 or board._combat_anim_state != board.CombatAnimState.NONE:
+		if not board.move_ready.is_connected(_apply_pending_state):
+			board.move_ready.connect(_apply_pending_state, CONNECT_ONE_SHOT)
+	else:
+		_apply_pending_state_now()
+
+
+func _apply_pending_state(_from: Vector2i = Vector2i.ZERO, _to: Vector2i = Vector2i.ZERO) -> void:
+	_apply_pending_state_now()
+
+
+func _apply_pending_state_now() -> void:
+	if _pending_state.size() == 0:
+		return
+	_current_team = _pending_state["current_team"]
+	_rebuild_state(_pending_state["pieces"], _pending_state["captured_red"], _pending_state["captured_blue"])
+	_pending_state = {}
 	_update_board()
 	_update_turn_label()
 
@@ -223,6 +248,15 @@ func _on_setup_state(pieces: Array) -> void:
 	GameManager.board_state = _local_bs
 	GameManager.captured_pieces = _local_caps
 	board.refresh()
+
+
+func _on_move_made(move_team: PieceData.Team, from: Vector2i, to: Vector2i) -> void:
+	# Animate the move on our board (both own and opponent moves)
+	var piece_id: int = _local_bs.get_piece_at(from)
+	if piece_id != -1:
+		board.animate_move_with_combat(piece_id, from, to)
+	if move_team == _my_team:
+		_awaiting_own_move = false
 
 
 func _on_combat(info: Dictionary) -> void:
@@ -265,10 +299,11 @@ func _on_board_click(pos: Vector2i) -> void:
 
 		if pos in board.valid_moves:
 			var from: Vector2i = selected["pos"]
-			var piece_id: int = _selected_piece_id
 			board.clear_selection()
 			_selected_piece_id = -1
-			board.animate_move_with_combat(piece_id, from, pos)
+			# Send move to server immediately, animate locally
+			_awaiting_own_move = true
+			_client.send_move(from, pos)
 			return
 
 		if clicked_id != -1:
@@ -289,9 +324,9 @@ func _on_board_click(pos: Vector2i) -> void:
 			board.select_piece(clicked_id)
 
 
-func _on_move_ready(from: Vector2i, to: Vector2i) -> void:
-	if _client != null and _phase == "play":
-		_client.send_move(from, to)
+func _on_move_ready(_from: Vector2i, _to: Vector2i) -> void:
+	# Move already sent to server on click; this fires after animation completes
+	pass
 
 
 # --- State reconstruction ---

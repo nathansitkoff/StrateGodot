@@ -10,6 +10,7 @@ const RANDOMIZE: String = "randomize"
 const PLACEMENT_STRATEGY: String = "placement_strategy"
 
 # Message types: Server → Client
+const MOVE_MADE: String = "move_made"
 const ASSIGN_TEAM: String = "assign_team"
 const STATE_UPDATE: String = "state_update"
 const PHASE_CHANGE: String = "phase_change"

@@ -237,6 +237,17 @@ func _handle_move(team: PieceData.Team, msg: Dictionary) -> void:
 		_send_to_team(team, { "type": Proto.ERROR, "message": "Invalid move" })
 		return
 
+	var piece_id: int = _board_state.get_piece_at(from)
+
+	# Broadcast move info to both clients before applying
+	_broadcast({
+		"type": Proto.MOVE_MADE,
+		"team": team,
+		"piece_id": piece_id,
+		"from_x": from.x, "from_y": from.y,
+		"to_x": to.x, "to_y": to.y,
+	})
+
 	_recorder.record_move(from, to)
 	var result: Dictionary = GameManager.apply_move(from, to, _board_state, _captured)
 	_recorder.record_checksum(_board_state)
