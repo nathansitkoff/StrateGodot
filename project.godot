@@ -19,15 +19,14 @@ config/features=PackedStringArray("4.6", "GL Compatibility")
 GameManager="*res://scripts/autoloads/game_manager.gd"
 AudioManager="*res://scripts/autoloads/audio_manager.gd"
 SaveSystem="*res://scripts/autoloads/save_system.gd"
+TestRunner="*res://scripts/test/test_runner.gd"
 
 [display]
 
 window/size/viewport_width=1280
 window/size/viewport_height=720
-window/size/resizable=true
 window/size/mode=3
 window/stretch/mode="canvas_items"
-window/stretch/aspect="keep"
 
 [rendering]
 
