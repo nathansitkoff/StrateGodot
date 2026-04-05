@@ -427,7 +427,7 @@ func _draw_flag_icon(cx: float, cy: float, s: float) -> void:
 	var p1: Vector2 = pole_top
 	var p2: Vector2 = Vector2(cx + s * 0.15, cy - s * 0.1)
 	var p3: Vector2 = Vector2(cx - s * 0.1, cy - s * 0.02)
-	draw_colored_polygon(PackedVector2Array([p1, p2, p3]), Color(1.0, 0.9, 0.3))
+	draw_colored_polygon(PackedVector2Array([p1, p2, p3]), VisualConfig.FLAG_PENNANT)
 
 
 func _draw_bomb_icon(cx: float, cy: float, s: float) -> void:
@@ -565,13 +565,13 @@ func _draw_small_star(cx: float, cy: float, outer_r: float) -> void:
 		var angle: float = (PI / 2.0) + (i * PI / 5.0)
 		var r: float = outer_r if i % 2 == 0 else inner_r
 		points.append(Vector2(cx + cos(angle) * r, cy - sin(angle) * r))
-	draw_colored_polygon(points, Color(1.0, 0.85, 0.2))
+	draw_colored_polygon(points, VisualConfig.STAR_GOLD)
 
 
 func _draw_revealed_eye(cx: float, cy: float, s: float) -> void:
 	var w: float = s * 0.12
 	var h: float = s * 0.06
-	var yellow: Color = Color(1.0, 0.85, 0.0)
+	var yellow: Color = VisualConfig.REVEALED_EYE
 	# Eye outline arcs
 	var segments: int = 6
 	var top_points: PackedVector2Array = PackedVector2Array()

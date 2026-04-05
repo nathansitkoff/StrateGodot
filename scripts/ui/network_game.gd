@@ -230,7 +230,7 @@ func _on_setup_complete(_team: PieceData.Team) -> void:
 	board.set_game_layout()
 	board.refresh()
 	turn_label.text = "Waiting for opponent to finish placing..."
-	turn_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
+	turn_label.add_theme_color_override("font_color", VisualConfig.TEAM_NEUTRAL)
 
 
 func _on_turn_changed(team: PieceData.Team) -> void:

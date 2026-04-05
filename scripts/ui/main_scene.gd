@@ -23,7 +23,7 @@ var _recorder: GameRecorder = null
 var _red_ai_name: String = "Human"
 var _blue_ai_name: String = "Human"
 
-const AI_MOVE_DELAY: float = 0.5
+
 
 
 func _ready() -> void:
@@ -298,7 +298,7 @@ func _is_ai_team(team: PieceData.Team) -> bool:
 
 func _schedule_ai_move() -> void:
 	board.refresh()
-	get_tree().create_timer(AI_MOVE_DELAY).timeout.connect(_execute_ai_move)
+	get_tree().create_timer(VisualConfig.AI_MOVE_DELAY).timeout.connect(_execute_ai_move)
 
 
 func _execute_ai_move() -> void:
