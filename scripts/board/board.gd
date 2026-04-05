@@ -24,6 +24,7 @@ var selected_piece_id: int = -1
 var valid_moves: Array[Vector2i] = []
 var last_enemy_move: Vector2i = Vector2i(-1, -1)
 var setup_valid_rows: Array[int] = []  # Highlighted during piece placement
+var flag_capture_pos: Vector2i = Vector2i(-1, -1)  # Position where flag was captured
 
 # Animation state
 var _anim_piece_id: int = -1
@@ -425,6 +426,12 @@ func _draw_pieces() -> void:
 					_draw_general_icon(icon_cx, icon_cy, s)
 				PieceData.Rank.MARSHAL:
 					_draw_marshal_icon(icon_cx, icon_cy, s)
+
+		# Draw small captured flag icon in bottom-right corner
+		if flag_capture_pos != Vector2i(-1, -1) and pos == flag_capture_pos:
+			var flag_cx: float = piece_rect.position.x + piece_rect.size.x - cell_size * 0.18
+			var flag_cy: float = piece_rect.position.y + piece_rect.size.y - cell_size * 0.18
+			_draw_flag_icon(flag_cx, flag_cy, cell_size * 0.5)
 
 
 # --- Icons ---

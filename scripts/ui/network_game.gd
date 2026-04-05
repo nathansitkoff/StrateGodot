@@ -279,6 +279,8 @@ func _on_move_made(move_team: PieceData.Team, from: Vector2i, to: Vector2i) -> v
 
 
 func _on_combat(info: Dictionary) -> void:
+	if int(info["def_rank"]) == PieceData.Rank.FLAG:
+		board.flag_capture_pos = Vector2i(int(info["pos_x"]), int(info["pos_y"]))
 	if board.visible:
 		hud.show_combat_result(
 			int(info["atk_rank"]) as PieceData.Rank,

@@ -234,6 +234,8 @@ func _handle_move(team: PieceData.Team, msg: Dictionary) -> void:
 
 func _end_game(winner: PieceData.Team, reason: String) -> void:
 	_phase = "game_over"
+	# Send final state with all pieces revealed
+	_send_final_state()
 	_broadcast({ "type": Proto.GAME_OVER, "winner": winner, "reason": reason })
 
 	if _recorder != null:
@@ -248,6 +250,27 @@ func _end_game(winner: PieceData.Team, reason: String) -> void:
 # --- Helpers ---
 
 
+
+
+func _send_final_state() -> void:
+	# Send all pieces revealed to both players (game is over)
+	var pieces: Array[Dictionary] = []
+	for pid: int in _board_state.pieces:
+		var p: Dictionary = _board_state.pieces[pid]
+		pieces.append({
+			"id": pid, "team": p["team"],
+			"x": p["pos"].x, "y": p["pos"].y,
+			"revealed": true,
+			"rank": p["rank"],
+		})
+	var msg: Dictionary = {
+		"type": Proto.STATE_UPDATE,
+		"pieces": pieces,
+		"current_team": _current_team,
+		"captured_red": _captured[PieceData.Team.RED],
+		"captured_blue": _captured[PieceData.Team.BLUE],
+	}
+	_broadcast(msg)
 
 
 func _send_game_state_to_all() -> void:

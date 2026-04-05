@@ -183,6 +183,8 @@ func _on_turn_changed(team: PieceData.Team) -> void:
 
 func _on_combat_occurred(combat_info: Dictionary) -> void:
 	board.flash_combat(combat_info["pos"])
+	if combat_info["def_rank"] == PieceData.Rank.FLAG:
+		board.flag_capture_pos = combat_info["pos"]
 	hud.show_combat_result(
 		combat_info["atk_rank"],
 		combat_info["def_rank"],
@@ -230,6 +232,7 @@ func _exit_to_menu() -> void:
 	board.offset_left = 0
 	board.offset_top = 0
 	board.offset_bottom = 0
+	board.flag_capture_pos = Vector2i(-1, -1)
 	_recorder = null
 	GameManager.recorder = null
 	GameManager.current_phase = GameManager.GamePhase.MENU
