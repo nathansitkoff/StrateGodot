@@ -186,8 +186,11 @@ func _on_phase_changed(phase: String) -> void:
 				setup_phase.setup_complete.connect(_on_setup_complete)
 		"play":
 			setup_phase.visible = false
+			board.setup_valid_rows.clear()
+			connect_panel.visible = false
 			visible = false
 			mouse_filter = Control.MOUSE_FILTER_IGNORE
+			color = Color(0, 0, 0, 0)
 			GameManager.current_phase = GameManager.GamePhase.MENU
 			_show_game_ui()
 			_update_turn_label()
@@ -216,14 +219,21 @@ func _on_setup_complete(_team: PieceData.Team) -> void:
 		"type": "submit_placement",
 		"pieces": pieces,
 	})
-	# Show waiting message
+	# Show waiting message in turn bar, keep pieces visible
 	setup_phase.visible = false
-	visible = true
-	connect_panel.visible = true
-	connect_button.visible = false
-	status_label.text = "Waiting for opponent to finish placing..."
-	color = Color(0.15, 0.15, 0.2, 1)
-	mouse_filter = Control.MOUSE_FILTER_STOP
+	visible = false
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# Keep the current board state (has our placed pieces) for display
+	# Don't swap to _local_bs yet — that happens when play starts
+	board.visible = true
+	left_hud.visible = true
+	hud.visible = true
+	turn_bar.visible = true
+	board.offset_left = 220
+	board.offset_top = 36
+	board.refresh()
+	turn_label.text = "Waiting for opponent to finish placing..."
+	turn_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
 
 
 func _on_turn_changed(team: PieceData.Team) -> void:
@@ -281,15 +291,11 @@ func _on_combat(info: Dictionary) -> void:
 func _on_game_ended(winner: PieceData.Team, reason: String) -> void:
 	_phase = "game_over"
 	if winner == _my_team:
-		turn_label.text = "You win! (%s)" % reason
+		turn_label.text = "You win! (%s) — Press Escape to exit" % reason
 	else:
-		turn_label.text = "%s wins. (%s)" % [PieceData.get_team_name(winner), reason]
-	visible = true
-	connect_panel.visible = true
-	connect_button.visible = false
-	status_label.text = turn_label.text
-	color = Color(0, 0, 0, 0)
-	mouse_filter = Control.MOUSE_FILTER_STOP
+		turn_label.text = "%s wins. (%s) — Press Escape to exit" % [PieceData.get_team_name(winner), reason]
+	var c: Color = Color(0.9, 0.3, 0.3) if winner == PieceData.Team.RED else Color(0.3, 0.4, 0.9)
+	turn_label.add_theme_color_override("font_color", c)
 
 
 func _on_error(message: String) -> void:
@@ -329,8 +335,6 @@ func _rebuild_state(pieces: Array, captured_red: Array, captured_blue: Array) ->
 			revealed = false
 		var pid: int = _local_bs.add_piece(rank, piece_team as PieceData.Team, pos)
 		_local_bs.pieces[pid]["revealed"] = revealed
-		if piece_team == _my_team:
-			_local_bs.pieces[pid]["revealed"] = true
 
 	_local_caps[PieceData.Team.RED].clear()
 	for r: int in captured_red:

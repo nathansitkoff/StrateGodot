@@ -23,6 +23,7 @@ var board_offset: Vector2 = Vector2.ZERO
 var selected_piece_id: int = -1
 var valid_moves: Array[Vector2i] = []
 var last_enemy_move: Vector2i = Vector2i(-1, -1)
+var setup_valid_rows: Array[int] = []  # Highlighted during piece placement
 
 # Animation state
 var _anim_piece_id: int = -1
@@ -252,6 +253,10 @@ func _draw() -> void:
 				else:
 					base = BOARD_COLORS["dark"]
 				draw_rect(rect, base)
+
+			# Dim invalid setup rows (not in valid rows, not lakes)
+			if setup_valid_rows.size() > 0 and row not in setup_valid_rows and not GameManager.board_state.is_lake(pos):
+				draw_rect(rect, Color(0.0, 0.0, 0.0, 0.3))
 
 			# Highlight selected piece
 			if selected_piece_id != -1:

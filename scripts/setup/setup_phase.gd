@@ -43,8 +43,11 @@ func start_setup(team: PieceData.Team, test_mode: bool = false) -> void:
 	var team_name: String = PieceData.get_team_name(team)
 	if _test_mode:
 		team_label.text = "AI Test — %s Setup" % team_name
+		# All rows valid in test mode
+		board.setup_valid_rows = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 	else:
 		team_label.text = "Player %s — Place Your Pieces" % team_name
+		board.setup_valid_rows = GameManager.board_state.get_setup_rows(team)
 
 	ready_button.disabled = true
 	_build_tray()
@@ -148,10 +151,8 @@ func _on_square_clicked(pos: Vector2i) -> void:
 	if not GameManager.board_state.is_valid_cell(pos):
 		return
 
-	if not _test_mode:
-		var valid_rows: Array[int] = GameManager.board_state.get_setup_rows(current_team)
-		if pos.y not in valid_rows:
-			return
+	if board.setup_valid_rows.size() > 0 and pos.y not in board.setup_valid_rows:
+		return
 
 	var existing: int = GameManager.board_state.get_piece_at(pos)
 
@@ -182,6 +183,8 @@ func _on_square_clicked(pos: Vector2i) -> void:
 
 func _on_ready_pressed() -> void:
 	visible = false
+	board.setup_valid_rows.clear()
+	board.refresh()
 	setup_complete.emit(current_team)
 
 

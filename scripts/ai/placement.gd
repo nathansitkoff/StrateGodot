@@ -4,10 +4,9 @@ extends RefCounted
 enum Strategy {
 	CLUSTERED_DEFENSE,
 	FRONT_AGGRESSION,
-	RANDOM,
 }
 
-const STRATEGY_NAMES: Array[String] = ["Clustered Defense", "Front Aggression", "Random"]
+const STRATEGY_NAMES: Array[String] = ["Clustered Defense", "Front Aggression"]
 
 
 static func place(strategy: Strategy, board_state: BoardState, ai_team: PieceData.Team) -> void:
@@ -16,30 +15,6 @@ static func place(strategy: Strategy, board_state: BoardState, ai_team: PieceDat
 			_clustered_defense(board_state, ai_team)
 		Strategy.FRONT_AGGRESSION:
 			_front_aggression(board_state, ai_team)
-		Strategy.RANDOM:
-			_random(board_state, ai_team)
-
-
-static func _random(board_state: BoardState, ai_team: PieceData.Team) -> void:
-	var rows: Array[int] = board_state.get_setup_rows(ai_team)
-	var cells: Array[Vector2i] = []
-	for col: int in range(BoardState.BOARD_SIZE):
-		for row: int in rows:
-			var pos: Vector2i = Vector2i(col, row)
-			if board_state.is_valid_cell(pos) and board_state.get_piece_at(pos) == -1:
-				cells.append(pos)
-	cells.shuffle()
-	var idx: int = 0
-	for rank: int in PieceData.RANK_INFO:
-		var remaining: int = PieceData.RANK_INFO[rank]["count"]
-		for piece_id: int in board_state.pieces:
-			var p: Dictionary = board_state.pieces[piece_id]
-			if p["team"] == ai_team and p["rank"] == rank:
-				remaining -= 1
-		for i: int in range(remaining):
-			if idx < cells.size():
-				board_state.add_piece(rank, ai_team, cells[idx])
-				idx += 1
 
 
 static func _clustered_defense(board_state: BoardState, ai_team: PieceData.Team) -> void:
