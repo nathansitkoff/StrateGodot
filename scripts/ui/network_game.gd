@@ -107,8 +107,7 @@ func _show_game_ui() -> void:
 	left_hud.visible = true
 	hud.visible = true
 	turn_bar.visible = true
-	board.offset_left = 220
-	board.offset_top = 36
+	board.set_game_layout()
 	GameManager.board_state = _local_bs
 	GameManager.captured_pieces = _local_caps
 	GameManager.game_mode = GameManager.GameMode.LOCAL_2P
@@ -122,8 +121,7 @@ func _hide_game_ui() -> void:
 	left_hud.visible = false
 	hud.visible = false
 	turn_bar.visible = false
-	board.offset_left = 0
-	board.offset_top = 0
+	board.reset_layout()
 
 
 func _update_board() -> void:
@@ -229,8 +227,7 @@ func _on_setup_complete(_team: PieceData.Team) -> void:
 	left_hud.visible = true
 	hud.visible = true
 	turn_bar.visible = true
-	board.offset_left = 220
-	board.offset_top = 36
+	board.set_game_layout()
 	board.refresh()
 	turn_label.text = "Waiting for opponent to finish placing..."
 	turn_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))

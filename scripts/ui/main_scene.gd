@@ -119,9 +119,10 @@ func _on_phase_changed(phase: GameManager.GamePhase) -> void:
 		GameManager.GamePhase.SETUP_RED:
 			hud.visible = false
 			left_hud.visible = false
-			turn_bar.visible = false
-			board.offset_top = 0
-			board.offset_left = 0
+			turn_bar.visible = true
+			turn_label.text = "Setup — RED"
+			turn_label.add_theme_color_override("font_color", Color(0.9, 0.3, 0.3))
+			board.set_game_layout()
 			if is_ai_vs_ai:
 				ai_players[PieceData.Team.RED].generate_setup(GameManager.board_state)
 				board.refresh()
@@ -146,8 +147,7 @@ func _on_phase_changed(phase: GameManager.GamePhase) -> void:
 			hud.visible = true
 			left_hud.visible = true
 			turn_bar.visible = true
-			board.offset_top = 36
-			board.offset_left = 220
+			board.set_game_layout()
 			hud.clear_combat()
 			_update_turn_bar(GameManager.current_team)
 			_update_remaining()
@@ -229,9 +229,7 @@ func _exit_to_menu() -> void:
 	game_options.visible = false
 	network_game.visible = false
 	network_game._cleanup()
-	board.offset_left = 0
-	board.offset_top = 0
-	board.offset_bottom = 0
+	board.reset_layout()
 	board.flag_capture_pos = Vector2i(-1, -1)
 	_recorder = null
 	GameManager.recorder = null

@@ -681,6 +681,20 @@ func clear_selection() -> void:
 	queue_redraw()
 
 
+func set_game_layout() -> void:
+	offset_left = 220
+	offset_right = -220
+	offset_top = 36
+	offset_bottom = 0
+
+
+func reset_layout() -> void:
+	offset_left = 0
+	offset_right = 0
+	offset_top = 0
+	offset_bottom = 0
+
+
 func refresh() -> void:
 	# Show last enemy move highlight if the last move was from the other team
 	var viewing: PieceData.Team = _get_viewing_team()

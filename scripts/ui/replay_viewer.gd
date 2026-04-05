@@ -212,8 +212,7 @@ func _show_ui() -> void:
 	left_hud.visible = true
 	hud.visible = true
 	turn_bar.visible = true
-	board.offset_left = 220
-	board.offset_top = 36
+	board.set_game_layout()
 	board.offset_bottom = -60
 
 
@@ -221,6 +220,4 @@ func _hide_ui() -> void:
 	left_hud.visible = false
 	hud.visible = false
 	turn_bar.visible = false
-	board.offset_left = 0
-	board.offset_top = 0
-	board.offset_bottom = 0
+	board.reset_layout()

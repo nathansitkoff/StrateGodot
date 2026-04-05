@@ -52,6 +52,7 @@ func start_setup(team: PieceData.Team, test_mode: bool = false) -> void:
 	ready_button.disabled = true
 	_build_tray()
 	_build_placement_buttons()
+	board.set_game_layout()
 	visible = true
 	board.refresh()
 
