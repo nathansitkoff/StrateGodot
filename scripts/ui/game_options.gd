@@ -70,8 +70,8 @@ func show_options(mode: GameManager.GameMode) -> void:
 
 func _update_selection() -> void:
 	if _first_team == PieceData.Team.RED:
-		red_first_button.add_theme_color_override("font_color", Color(1.0, 0.9, 0.3))
+		red_first_button.add_theme_color_override("font_color", VisualConfig.BUTTON_HIGHLIGHT)
 		blue_first_button.remove_theme_color_override("font_color")
 	else:
-		blue_first_button.add_theme_color_override("font_color", Color(1.0, 0.9, 0.3))
+		blue_first_button.add_theme_color_override("font_color", VisualConfig.BUTTON_HIGHLIGHT)
 		red_first_button.remove_theme_color_override("font_color")

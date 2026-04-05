@@ -9,9 +9,9 @@ func show_turn(team: PieceData.Team, board_only: bool = false) -> void:
 	var team_name: String = PieceData.get_team_name(team)
 	label.text = "Player %s's Turn\n\nClick to Continue" % team_name
 	if board_only:
-		offset_left = 220
-		offset_top = 36
-		offset_right = -220
+		offset_left = VisualConfig.SIDEBAR_WIDTH
+		offset_top = VisualConfig.TURN_BAR_HEIGHT
+		offset_right = -VisualConfig.SIDEBAR_WIDTH
 		offset_bottom = 0
 	else:
 		offset_left = 0

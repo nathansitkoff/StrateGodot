@@ -1,6 +1,8 @@
 class_name SamplingAIBase
 extends AIBase
 
+const WIN_SCORE: float = 10000.0
+
 # Shared piece values for scoring
 const PIECE_VALUES: Dictionary = {
 	PieceData.Rank.FLAG: 0,

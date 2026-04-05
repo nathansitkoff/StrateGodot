@@ -56,7 +56,7 @@ func show_connect() -> void:
 	connect_button.visible = true
 	connect_button.disabled = false
 	status_label.text = "Enter server address"
-	color = Color(0.15, 0.15, 0.2, 1)
+	color = VisualConfig.MENU_BACKGROUND
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	visible = true
 
@@ -136,7 +136,7 @@ func _update_board() -> void:
 
 func _update_turn_label() -> void:
 	var name: String = PieceData.get_team_name(_current_team)
-	var c: Color = Color(0.9, 0.3, 0.3) if _current_team == PieceData.Team.RED else Color(0.3, 0.4, 0.9)
+	var c: Color = VisualConfig.get_team_color(_current_team)
 	if _current_team == _my_team:
 		turn_label.text = "Your Turn (%s)" % name
 	else:
@@ -160,7 +160,7 @@ func _on_disconnected() -> void:
 	connect_panel.visible = true
 	connect_button.visible = false
 	mouse_filter = Control.MOUSE_FILTER_STOP
-	color = Color(0.15, 0.15, 0.2, 1)
+	color = VisualConfig.MENU_BACKGROUND
 	if _client != null:
 		_client.queue_free()
 		_client = null
@@ -293,7 +293,7 @@ func _on_game_ended(winner: PieceData.Team, reason: String) -> void:
 		turn_label.text = "You win! (%s) — Press Escape to exit" % reason
 	else:
 		turn_label.text = "%s wins. (%s) — Press Escape to exit" % [PieceData.get_team_name(winner), reason]
-	var c: Color = Color(0.9, 0.3, 0.3) if winner == PieceData.Team.RED else Color(0.3, 0.4, 0.9)
+	var c: Color = VisualConfig.get_team_color(winner)
 	turn_label.add_theme_color_override("font_color", c)
 
 

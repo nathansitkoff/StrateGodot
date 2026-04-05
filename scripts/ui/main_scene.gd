@@ -121,7 +121,7 @@ func _on_phase_changed(phase: GameManager.GamePhase) -> void:
 			left_hud.visible = false
 			turn_bar.visible = true
 			turn_label.text = "Setup — RED"
-			turn_label.add_theme_color_override("font_color", Color(0.9, 0.3, 0.3))
+			turn_label.add_theme_color_override("font_color", VisualConfig.TEAM_RED)
 			board.set_game_layout()
 			if is_ai_vs_ai:
 				ai_players[PieceData.Team.RED].generate_setup(GameManager.board_state)
@@ -281,7 +281,7 @@ func _update_remaining() -> void:
 
 func _update_turn_bar(team: PieceData.Team) -> void:
 	var team_name: String = PieceData.get_team_name(team)
-	var color: Color = Color(0.9, 0.3, 0.3) if team == PieceData.Team.RED else Color(0.3, 0.4, 0.9)
+	var color: Color = VisualConfig.get_team_color(team)
 	turn_label.text = "%s's Turn" % team_name
 	turn_label.add_theme_color_override("font_color", color)
 

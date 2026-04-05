@@ -171,7 +171,7 @@ func _apply_state() -> void:
 		GameManager.last_move_to = Vector2i(-1, -1)
 
 	turn_label.text = "%s's Turn — Move %d/%d" % [PieceData.get_team_name(current_team), _current_move, _recorder.get_total_moves()]
-	var color: Color = Color(0.9, 0.3, 0.3) if current_team == PieceData.Team.RED else Color(0.3, 0.4, 0.9)
+	var color: Color = VisualConfig.get_team_color(current_team)
 	turn_label.add_theme_color_override("font_color", color)
 
 	left_hud.update_remaining(PieceData.Team.RED)
@@ -213,7 +213,7 @@ func _show_ui() -> void:
 	hud.visible = true
 	turn_bar.visible = true
 	board.set_game_layout()
-	board.offset_bottom = -60
+	board.offset_bottom = -VisualConfig.REPLAY_BAR_HEIGHT
 
 
 func _hide_ui() -> void:

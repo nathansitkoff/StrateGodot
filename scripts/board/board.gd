@@ -3,20 +3,7 @@ extends Control
 signal square_clicked(pos: Vector2i)
 
 const BOARD_SIZE: int = 10
-const BOARD_COLORS: Dictionary = {
-	"light": Color(0.82, 0.76, 0.62),
-	"dark": Color(0.55, 0.48, 0.36),
-	"lake_light": Color(0.25, 0.45, 0.7),
-	"lake_dark": Color(0.18, 0.35, 0.58),
-	"board_border": Color(0.25, 0.2, 0.15),
-	"grid": Color(0.4, 0.35, 0.28, 0.4),
-	"highlight": Color(0.3, 0.75, 0.3, 0.45),
-	"selected": Color(1.0, 0.9, 0.2, 0.45),
-	"red_piece": Color(0.8, 0.2, 0.2),
-	"blue_piece": Color(0.2, 0.3, 0.8),
-	"hidden_piece": Color(0.5, 0.5, 0.5),
-	"last_move": Color(1.0, 0.5, 0.0),
-}
+# Board colors are read from VisualConfig autoload
 
 var cell_size: float = 60.0
 var board_offset: Vector2 = Vector2.ZERO
@@ -214,13 +201,10 @@ func _draw() -> void:
 		Vector2(cell_size * BOARD_SIZE, cell_size * BOARD_SIZE),
 	)
 	# Outer dark edge
-	draw_rect(inner_rect.grow(frame_width + 2), Color(0.12, 0.08, 0.05))
-	# Main wood frame
-	draw_rect(inner_rect.grow(frame_width), Color(0.4, 0.28, 0.15))
-	# Inner lighter wood highlight
-	draw_rect(inner_rect.grow(frame_width * 0.6), Color(0.5, 0.36, 0.2))
-	# Inner bevel (dark edge where frame meets board)
-	draw_rect(inner_rect.grow(2), Color(0.2, 0.14, 0.08))
+	draw_rect(inner_rect.grow(frame_width + 2), VisualConfig.FRAME_OUTER)
+	draw_rect(inner_rect.grow(frame_width), VisualConfig.FRAME_MAIN)
+	draw_rect(inner_rect.grow(frame_width * 0.6), VisualConfig.FRAME_INNER)
+	draw_rect(inner_rect.grow(2), VisualConfig.FRAME_BEVEL)
 	# Subtle highlight on top and left of frame
 	var outer: Rect2 = inner_rect.grow(frame_width)
 	draw_line(Vector2(outer.position.x, outer.position.y), Vector2(outer.position.x + outer.size.x, outer.position.y), Color(1.0, 1.0, 1.0, 0.08), 2.0)
@@ -239,7 +223,7 @@ func _draw() -> void:
 			if GameManager.board_state.is_lake(pos):
 				# Lake gradient: lighter at top, darker at bottom
 				var t: float = float(row - 4) / 1.0  # 0.0 for row 4, 1.0 for row 5
-				var lake_color: Color = BOARD_COLORS["lake_light"].lerp(BOARD_COLORS["lake_dark"], clamp(t, 0.0, 1.0))
+				var lake_color: Color = VisualConfig.LAKE_LIGHT.lerp(VisualConfig.LAKE_DARK, clamp(t, 0.0, 1.0))
 				draw_rect(rect, lake_color)
 				# Wave lines on lake
 				var wave_y1: float = rect.position.y + rect.size.y * 0.35
@@ -250,34 +234,31 @@ func _draw() -> void:
 			else:
 				var base: Color
 				if (col + row) % 2 == 0:
-					base = BOARD_COLORS["light"]
+					base = VisualConfig.BOARD_LIGHT
 				else:
-					base = BOARD_COLORS["dark"]
+					base = VisualConfig.BOARD_DARK
 				draw_rect(rect, base)
 
 			# Dim invalid setup rows (not in valid rows, not lakes)
 			if setup_valid_rows.size() > 0 and row not in setup_valid_rows and not GameManager.board_state.is_lake(pos):
-				draw_rect(rect, Color(0.0, 0.0, 0.0, 0.3))
+				draw_rect(rect, VisualConfig.INVALID_ROW_DIM)
 
 			# Highlight selected piece
 			if selected_piece_id != -1:
 				var sel_piece: Dictionary = GameManager.board_state.pieces.get(selected_piece_id, {})
 				if sel_piece.get("pos") == pos:
-					draw_rect(rect, BOARD_COLORS["selected"])
+					draw_rect(rect, VisualConfig.SELECTED_HIGHLIGHT)
 
 			# Highlight valid moves
 			if pos in valid_moves:
-				draw_rect(rect, BOARD_COLORS["highlight"])
+				draw_rect(rect, VisualConfig.MOVE_HIGHLIGHT)
 
 			# Pulsing last enemy move indicator
 			if pos == last_enemy_move:
 				var pulse: float = (sin(_last_move_pulse_time * 3.0) + 1.0) / 2.0
 				var glow_alpha: float = 0.15 + pulse * 0.2
-				var glow_color: Color
-				if GameManager.last_move_team == PieceData.Team.RED:
-					glow_color = Color(1.0, 0.5, 0.1, glow_alpha)
-				else:
-					glow_color = Color(0.1, 0.6, 1.0, glow_alpha)
+				var glow_color: Color = VisualConfig.get_last_move_color(GameManager.last_move_team)
+				glow_color.a = glow_alpha
 				draw_rect(rect, glow_color)
 
 			# Combat flash
@@ -285,7 +266,7 @@ func _draw() -> void:
 				draw_rect(rect, Color(1.0, 1.0, 1.0, _combat_flash_alpha * 0.7))
 
 			# Subtle grid lines
-			draw_rect(rect, BOARD_COLORS["grid"], false, 1.0)
+			draw_rect(rect, VisualConfig.GRID_LINE, false, 1.0)
 
 	# Draw pieces
 	_draw_pieces()
@@ -338,14 +319,14 @@ func _draw_pieces() -> void:
 		var bg_color: Color
 		var border_color: Color
 		if piece["team"] == PieceData.Team.RED and (is_own or is_revealed):
-			bg_color = BOARD_COLORS["red_piece"]
-			border_color = Color(0.5, 0.1, 0.1)
+			bg_color = VisualConfig.RED_PIECE
+			border_color = VisualConfig.RED_PIECE_BORDER
 		elif piece["team"] == PieceData.Team.BLUE and (is_own or is_revealed):
-			bg_color = BOARD_COLORS["blue_piece"]
-			border_color = Color(0.1, 0.15, 0.5)
+			bg_color = VisualConfig.BLUE_PIECE
+			border_color = VisualConfig.BLUE_PIECE_BORDER
 		else:
-			bg_color = BOARD_COLORS["hidden_piece"]
-			border_color = Color(0.3, 0.3, 0.3)
+			bg_color = VisualConfig.HIDDEN_PIECE
+			border_color = VisualConfig.HIDDEN_PIECE_BORDER
 
 		# Combat animation: flash and fade losing pieces
 		var piece_alpha: float = 1.0
@@ -682,9 +663,9 @@ func clear_selection() -> void:
 
 
 func set_game_layout() -> void:
-	offset_left = 220
-	offset_right = -220
-	offset_top = 36
+	offset_left = VisualConfig.SIDEBAR_WIDTH
+	offset_right = -VisualConfig.SIDEBAR_WIDTH
+	offset_top = VisualConfig.TURN_BAR_HEIGHT
 	offset_bottom = 0
 
 

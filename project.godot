@@ -16,6 +16,7 @@ config/features=PackedStringArray("4.6", "GL Compatibility")
 
 [autoload]
 
+VisualConfig="*res://scripts/config/visual_config.gd"
 GameManager="*res://scripts/autoloads/game_manager.gd"
 AudioManager="*res://scripts/autoloads/audio_manager.gd"
 SaveSystem="*res://scripts/autoloads/save_system.gd"
