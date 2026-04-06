@@ -1,5 +1,7 @@
 extends Control
 
+const UIH: GDScript = preload("res://scripts/ui/ui_helpers.gd")
+
 @onready var board: Control = %Board
 @onready var setup_phase: Control = %SetupPhase
 @onready var turn_switch: ColorRect = %TurnSwitch
@@ -121,8 +123,7 @@ func _on_phase_changed(phase: GameManager.GamePhase) -> void:
 			hud.visible = false
 			left_hud.visible = false
 			turn_bar.visible = true
-			turn_label.text = "Setup — RED"
-			turn_label.add_theme_color_override("font_color", VisualConfig.TEAM_RED)
+			UIH.update_turn_label(turn_label, PieceData.Team.RED, "Setup — RED")
 			board.set_game_layout()
 			if is_ai_vs_ai:
 				ai_players[PieceData.Team.RED].generate_setup(GameManager.board_state)
@@ -145,13 +146,10 @@ func _on_phase_changed(phase: GameManager.GamePhase) -> void:
 				_recorder.record_placements_from_board(GameManager.board_state)
 				_recorder.record_checksum(GameManager.board_state)
 			setup_phase.visible = false
-			hud.visible = true
-			left_hud.visible = true
-			turn_bar.visible = true
-			board.set_game_layout()
+			UIH.show_game_ui(board, left_hud, hud, turn_bar)
 			hud.clear_combat()
-			_update_turn_bar(GameManager.current_team)
-			_update_remaining()
+			UIH.update_turn_label(turn_label, GameManager.current_team)
+			UIH.update_remaining(left_hud, hud, PieceData.Team.RED)
 			# Configure controller for local/AI play
 			game_ctrl.get_board_state = func() -> BoardState: return GameManager.board_state
 			game_ctrl.get_my_team = func() -> PieceData.Team: return GameManager.current_team
@@ -171,8 +169,8 @@ func _on_setup_complete(team: PieceData.Team) -> void:
 
 func _on_turn_changed(team: PieceData.Team) -> void:
 	board.clear_selection()
-	_update_turn_bar(team)
-	_update_remaining()
+	UIH.update_turn_label(turn_label, team)
+	UIH.update_remaining(left_hud, hud, PieceData.Team.RED)
 
 	# Notify AI players of enemy piece movement (only if mover survived)
 	if GameManager.last_move_to != Vector2i(-1, -1):
@@ -204,7 +202,7 @@ func _on_combat_occurred(combat_info: Dictionary) -> void:
 
 func _on_game_ended(winner: PieceData.Team) -> void:
 	board.refresh()
-	_update_remaining()
+	UIH.update_remaining(left_hud, hud, PieceData.Team.RED)
 	# Save replay
 	if _recorder != null:
 		var result_str: String = "flag_captured"
@@ -229,16 +227,13 @@ func _on_play_again() -> void:
 
 
 func _exit_to_menu() -> void:
-	hud.visible = false
-	left_hud.visible = false
-	turn_bar.visible = false
+	UIH.hide_game_ui(left_hud, hud, turn_bar, board)
 	setup_phase.visible = false
 	turn_switch.visible = false
 	game_over.visible = false
 	game_options.visible = false
 	network_game.visible = false
 	network_game._cleanup()
-	board.reset_layout()
 	board.flag_capture_pos = Vector2i(-1, -1)
 	_recorder = null
 	GameManager.recorder = null
@@ -283,16 +278,6 @@ func _on_replay_viewer_back() -> void:
 	main_menu.visible = true
 
 
-func _update_remaining() -> void:
-	left_hud.update_remaining(PieceData.Team.RED)
-	hud.update_enemy_remaining(PieceData.Team.RED)
-
-
-func _update_turn_bar(team: PieceData.Team) -> void:
-	var team_name: String = PieceData.get_team_name(team)
-	var color: Color = VisualConfig.get_team_color(team)
-	turn_label.text = "%s's Turn" % team_name
-	turn_label.add_theme_color_override("font_color", color)
 
 
 func _get_viewing_team() -> PieceData.Team:

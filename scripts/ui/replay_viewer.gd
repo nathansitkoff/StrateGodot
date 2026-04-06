@@ -1,5 +1,7 @@
 extends Control
 
+const UIH: GDScript = preload("res://scripts/ui/ui_helpers.gd")
+
 signal back_pressed
 
 @onready var board: Control = %Board
@@ -170,12 +172,9 @@ func _apply_state() -> void:
 		GameManager.last_move_team = current_team
 		GameManager.last_move_to = Vector2i(-1, -1)
 
-	turn_label.text = "%s's Turn — Move %d/%d" % [PieceData.get_team_name(current_team), _current_move, _recorder.get_total_moves()]
-	var color: Color = VisualConfig.get_team_color(current_team)
-	turn_label.add_theme_color_override("font_color", color)
-
-	left_hud.update_remaining(PieceData.Team.RED)
-	hud.update_enemy_remaining(PieceData.Team.RED)
+	var label_text: String = "%s's Turn — Move %d/%d" % [PieceData.get_team_name(current_team), _current_move, _recorder.get_total_moves()]
+	UIH.update_turn_label(turn_label, current_team, label_text)
+	UIH.update_remaining(left_hud, hud, PieceData.Team.RED)
 	board.refresh()
 
 	move_label.text = "Move %d / %d" % [_current_move, _recorder.get_total_moves()]
@@ -208,16 +207,9 @@ func _update_info() -> void:
 
 func _show_ui() -> void:
 	visible = true
-	board.visible = true
-	left_hud.visible = true
-	hud.visible = true
-	turn_bar.visible = true
-	board.set_game_layout()
+	UIH.show_game_ui(board, left_hud, hud, turn_bar)
 	board.offset_bottom = -VisualConfig.REPLAY_BAR_HEIGHT
 
 
 func _hide_ui() -> void:
-	left_hud.visible = false
-	hud.visible = false
-	turn_bar.visible = false
-	board.reset_layout()
+	UIH.hide_game_ui(left_hud, hud, turn_bar, board)

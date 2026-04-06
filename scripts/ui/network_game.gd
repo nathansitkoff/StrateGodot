@@ -1,6 +1,7 @@
 extends ColorRect
 
 const NetworkControllerClass: GDScript = preload("res://scripts/network/network_controller.gd")
+const UIH: GDScript = preload("res://scripts/ui/ui_helpers.gd")
 
 signal back_pressed
 
@@ -91,45 +92,36 @@ func _cleanup() -> void:
 
 
 func _show_game_ui() -> void:
-	board.visible = true
-	left_hud.visible = true
-	hud.visible = true
-	turn_bar.visible = true
-	board.set_game_layout()
+	UIH.show_game_ui(board, left_hud, hud, turn_bar)
 	GameManager.board_state = _net.local_bs
 	GameManager.captured_pieces = _net.local_caps
 	GameManager.game_mode = GameManager.GameMode.LOCAL_2P
 	GameManager.current_team = _net.my_team
-	left_hud.update_remaining(PieceData.Team.RED)
-	hud.update_enemy_remaining(_net.my_team)
+	UIH.update_remaining(left_hud, hud, _net.my_team)
 	board.refresh()
 
 
 func _hide_game_ui() -> void:
-	left_hud.visible = false
-	hud.visible = false
-	turn_bar.visible = false
-	board.reset_layout()
+	UIH.hide_game_ui(left_hud, hud, turn_bar, board)
 
 
 func _update_board() -> void:
 	GameManager.board_state = _net.local_bs
 	GameManager.captured_pieces = _net.local_caps
 	GameManager.current_team = _net.my_team
-	left_hud.update_remaining(PieceData.Team.RED)
-	hud.update_enemy_remaining(_net.my_team)
+	UIH.update_remaining(left_hud, hud, _net.my_team)
 	board.clear_selection()
 	board.refresh()
 
 
 func _update_turn_label() -> void:
 	var team_name: String = PieceData.get_team_name(_net.current_team)
-	var c: Color = VisualConfig.get_team_color(_net.current_team)
+	var text: String
 	if _net.current_team == _net.my_team:
-		turn_label.text = "Your Turn (%s)" % team_name
+		text = "Your Turn (%s)" % team_name
 	else:
-		turn_label.text = "Opponent's Turn (%s)" % team_name
-	turn_label.add_theme_color_override("font_color", c)
+		text = "Opponent's Turn (%s)" % team_name
+	UIH.update_turn_label(turn_label, _net.current_team, text)
 
 
 # --- Callbacks from NetworkController ---
@@ -243,11 +235,12 @@ func _on_combat(info: Dictionary) -> void:
 
 
 func _on_game_ended(winner: PieceData.Team, reason: String) -> void:
+	var text: String
 	if winner == _net.my_team:
-		turn_label.text = "You win! (%s) — Press Escape to exit" % reason
+		text = "You win! (%s) — Press Escape to exit" % reason
 	else:
-		turn_label.text = "%s wins. (%s) — Press Escape to exit" % [PieceData.get_team_name(winner), reason]
-	turn_label.add_theme_color_override("font_color", VisualConfig.get_team_color(winner))
+		text = "%s wins. (%s) — Press Escape to exit" % [PieceData.get_team_name(winner), reason]
+	UIH.update_turn_label(turn_label, winner, text)
 
 
 func _on_error(message: String) -> void:
