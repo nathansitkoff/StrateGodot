@@ -328,7 +328,5 @@ func _execute_ai_move() -> void:
 func _on_move_ready(from: Vector2i, to: Vector2i) -> void:
 	if GameManager.current_phase != GameManager.GamePhase.PLAY:
 		return
-	if not _is_ai_team(GameManager.current_team):
-		return
 	GameManager.execute_move(from, to)
 	board.refresh()

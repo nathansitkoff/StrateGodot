@@ -1,5 +1,7 @@
 extends ColorRect
 
+const NetworkControllerClass: GDScript = preload("res://scripts/network/network_controller.gd")
+
 signal back_pressed
 
 @onready var connect_panel: VBoxContainer = %ConnectPanel
@@ -19,18 +21,7 @@ var setup_phase: Control = null
 var main_scene: Control = null
 var game_ctrl: Node = null
 
-var _client: Node = null
-var _my_team: PieceData.Team = PieceData.Team.RED
-var _phase: String = "waiting"
-var _current_team: PieceData.Team = PieceData.Team.RED
-var _awaiting_own_move: bool = false
-var _pending_state: Dictionary = {}
-
-var _local_bs: BoardState = BoardState.new()
-var _local_caps: Dictionary = {
-	PieceData.Team.RED: [] as Array[PieceData.Rank],
-	PieceData.Team.BLUE: [] as Array[PieceData.Rank],
-}
+var _net: RefCounted = null
 
 
 func _ready() -> void:
@@ -69,34 +60,29 @@ func _on_connect() -> void:
 		address = "127.0.0.1"
 	var port: int = int(port_input.value)
 
-	_client = Node.new()
-	_client.set_script(load("res://scripts/network/client.gd"))
-	add_child(_client)
+	_net = NetworkControllerClass.new()
+	_net.on_connected = _on_connected
+	_net.on_disconnected = _on_disconnected
+	_net.on_phase_changed = _on_phase_changed
+	_net.on_turn_changed = _on_turn_changed
+	_net.on_state_updated = _on_state_updated
+	_net.on_move_made = _on_move_made
+	_net.on_combat = _on_combat
+	_net.on_game_ended = _on_game_ended
+	_net.on_error = _on_error
 
-	_client.connected_to_server.connect(_on_connected)
-	_client.disconnected_from_server.connect(_on_disconnected)
-	_client.phase_changed.connect(_on_phase_changed)
-	_client.turn_changed.connect(_on_turn_changed)
-	_client.state_updated.connect(_on_state_updated)
-	_client.move_made.connect(_on_move_made)
-	_client.combat_occurred.connect(_on_combat)
-	_client.game_ended.connect(_on_game_ended)
-	_client.error_received.connect(_on_error)
-
-	_client.connect_to_server(address, port)
+	_net.connect_to_server(address, port, self)
 	status_label.text = "Connecting to %s:%d..." % [address, port]
 	connect_button.disabled = true
 
 
 func _cleanup() -> void:
-	if _client != null:
-		_client.queue_free()
-		_client = null
+	if _net != null:
+		_net.disconnect_from_server()
+		_net = null
 	setup_phase.visible = false
-	# Reconnect main_scene's setup handler
 	if main_scene != null and not setup_phase.setup_complete.is_connected(main_scene._on_setup_complete):
 		setup_phase.setup_complete.connect(main_scene._on_setup_complete)
-	# Disconnect our handler
 	if setup_phase.setup_complete.is_connected(_on_setup_complete):
 		setup_phase.setup_complete.disconnect(_on_setup_complete)
 	_hide_game_ui()
@@ -110,12 +96,12 @@ func _show_game_ui() -> void:
 	hud.visible = true
 	turn_bar.visible = true
 	board.set_game_layout()
-	GameManager.board_state = _local_bs
-	GameManager.captured_pieces = _local_caps
+	GameManager.board_state = _net.local_bs
+	GameManager.captured_pieces = _net.local_caps
 	GameManager.game_mode = GameManager.GameMode.LOCAL_2P
-	GameManager.current_team = _my_team
+	GameManager.current_team = _net.my_team
 	left_hud.update_remaining(PieceData.Team.RED)
-	hud.update_enemy_remaining(_my_team)
+	hud.update_enemy_remaining(_net.my_team)
 	board.refresh()
 
 
@@ -127,35 +113,34 @@ func _hide_game_ui() -> void:
 
 
 func _update_board() -> void:
-	GameManager.board_state = _local_bs
-	GameManager.captured_pieces = _local_caps
-	GameManager.current_team = _my_team
+	GameManager.board_state = _net.local_bs
+	GameManager.captured_pieces = _net.local_caps
+	GameManager.current_team = _net.my_team
 	left_hud.update_remaining(PieceData.Team.RED)
-	hud.update_enemy_remaining(_my_team)
+	hud.update_enemy_remaining(_net.my_team)
 	board.clear_selection()
 	board.refresh()
 
 
 func _update_turn_label() -> void:
-	var name: String = PieceData.get_team_name(_current_team)
-	var c: Color = VisualConfig.get_team_color(_current_team)
-	if _current_team == _my_team:
-		turn_label.text = "Your Turn (%s)" % name
+	var team_name: String = PieceData.get_team_name(_net.current_team)
+	var c: Color = VisualConfig.get_team_color(_net.current_team)
+	if _net.current_team == _net.my_team:
+		turn_label.text = "Your Turn (%s)" % team_name
 	else:
-		turn_label.text = "Opponent's Turn (%s)" % name
+		turn_label.text = "Opponent's Turn (%s)" % team_name
 	turn_label.add_theme_color_override("font_color", c)
 
 
-# --- Server message handlers ---
+# --- Callbacks from NetworkController ---
 
 
 func _on_connected(team: PieceData.Team) -> void:
-	_my_team = team
 	status_label.text = "Connected as %s. Waiting for opponent..." % PieceData.get_team_name(team)
 
 
 func _on_disconnected() -> void:
-	if _phase == "game_over":
+	if _net != null and _net.phase == "game_over":
 		return
 	status_label.text = "Disconnected from server."
 	setup_phase.visible = false
@@ -163,25 +148,19 @@ func _on_disconnected() -> void:
 	connect_button.visible = false
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	color = VisualConfig.MENU_BACKGROUND
-	if _client != null:
-		_client.queue_free()
-		_client = null
+	if _net != null:
+		_net.disconnect_from_server()
 
 
 func _on_phase_changed(phase: String) -> void:
-	_phase = phase
 	match phase:
 		"setup":
-			# Hide network overlay, show normal setup phase
 			visible = false
-			# Disconnect main_scene's setup handler so it doesn't trigger turn switches
 			if setup_phase.setup_complete.is_connected(main_scene._on_setup_complete):
 				setup_phase.setup_complete.disconnect(main_scene._on_setup_complete)
-			# Use the standard setup UI — placement is fully local
 			GameManager.board_state.reset()
-			GameManager.current_phase = GameManager.GamePhase.SETUP_RED if _my_team == PieceData.Team.RED else GameManager.GamePhase.SETUP_BLUE
-			setup_phase.start_setup(_my_team)
-			# Connect our setup_complete handler
+			GameManager.current_phase = GameManager.GamePhase.SETUP_RED if _net.my_team == PieceData.Team.RED else GameManager.GamePhase.SETUP_BLUE
+			setup_phase.start_setup(_net.my_team)
 			if not setup_phase.setup_complete.is_connected(_on_setup_complete):
 				setup_phase.setup_complete.connect(_on_setup_complete)
 		"play":
@@ -194,38 +173,24 @@ func _on_phase_changed(phase: String) -> void:
 			GameManager.current_phase = GameManager.GamePhase.MENU
 			_show_game_ui()
 			_update_turn_label()
-			# Configure controller for network play
-			game_ctrl.get_board_state = func() -> BoardState: return _local_bs
-			game_ctrl.get_my_team = func() -> PieceData.Team: return _my_team
-			game_ctrl.is_my_turn = func() -> bool: return _phase == "play" and _current_team == _my_team
-			game_ctrl.on_move = _do_network_move
-		"game_over":
-			pass
+			game_ctrl.get_board_state = func() -> BoardState: return _net.local_bs
+			game_ctrl.get_my_team = func() -> PieceData.Team: return _net.my_team
+			game_ctrl.is_my_turn = func() -> bool: return _net.phase == "play" and _net.current_team == _net.my_team
+			game_ctrl.on_move = func(from: Vector2i, to: Vector2i) -> void: _net.send_move(from, to)
 
 
 func _on_setup_complete(_team: PieceData.Team) -> void:
-	# Send full placement to server
-	if _client == null:
+	if _net == null:
 		return
 	var pieces: Array[Dictionary] = []
 	for piece_id: int in GameManager.board_state.pieces:
 		var p: Dictionary = GameManager.board_state.pieces[piece_id]
-		if p["team"] == _my_team:
-			pieces.append({
-				"rank": p["rank"],
-				"x": p["pos"].x,
-				"y": p["pos"].y,
-			})
-	_client._send({
-		"type": "submit_placement",
-		"pieces": pieces,
-	})
-	# Show waiting message in turn bar, keep pieces visible
+		if p["team"] == _net.my_team:
+			pieces.append({ "rank": p["rank"], "x": p["pos"].x, "y": p["pos"].y })
+	_net.send_placement(pieces)
 	setup_phase.visible = false
 	visible = false
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	# Keep the current board state (has our placed pieces) for display
-	# Don't swap to _local_bs yet — that happens when play starts
 	board.visible = true
 	left_hud.visible = true
 	hud.visible = true
@@ -237,18 +202,11 @@ func _on_setup_complete(_team: PieceData.Team) -> void:
 
 
 func _on_turn_changed(team: PieceData.Team) -> void:
-	_current_team = team
 	game_ctrl.clear_selection()
 	_update_turn_label()
 
 
-func _on_state_updated(pieces: Array, current_team: PieceData.Team, captured_red: Array, captured_blue: Array) -> void:
-	_pending_state = {
-		"pieces": pieces,
-		"current_team": current_team,
-		"captured_red": captured_red,
-		"captured_blue": captured_blue,
-	}
+func _on_state_updated() -> void:
 	if board._anim_progress < 1.0 or board._combat_anim_state != board.CombatAnimState.NONE:
 		if not board.move_ready.is_connected(_apply_pending_state):
 			board.move_ready.connect(_apply_pending_state, CONNECT_ONE_SHOT)
@@ -261,21 +219,15 @@ func _apply_pending_state(_from: Vector2i = Vector2i.ZERO, _to: Vector2i = Vecto
 
 
 func _apply_pending_state_now() -> void:
-	if _pending_state.size() == 0:
-		return
-	_current_team = _pending_state["current_team"]
-	_rebuild_state(_pending_state["pieces"], _pending_state["captured_red"], _pending_state["captured_blue"])
-	_pending_state = {}
+	_net.apply_pending_state()
 	_update_board()
 	_update_turn_label()
 
 
 func _on_move_made(move_team: PieceData.Team, from: Vector2i, to: Vector2i) -> void:
-	var piece_id: int = _local_bs.get_piece_at(from)
+	var piece_id: int = _net.local_bs.get_piece_at(from)
 	if piece_id != -1:
 		board.animate_move_with_combat(piece_id, from, to)
-	if move_team == _my_team:
-		_awaiting_own_move = false
 
 
 func _on_combat(info: Dictionary) -> void:
@@ -291,46 +243,12 @@ func _on_combat(info: Dictionary) -> void:
 
 
 func _on_game_ended(winner: PieceData.Team, reason: String) -> void:
-	_phase = "game_over"
-	if winner == _my_team:
+	if winner == _net.my_team:
 		turn_label.text = "You win! (%s) — Press Escape to exit" % reason
 	else:
 		turn_label.text = "%s wins. (%s) — Press Escape to exit" % [PieceData.get_team_name(winner), reason]
-	var c: Color = VisualConfig.get_team_color(winner)
-	turn_label.add_theme_color_override("font_color", c)
+	turn_label.add_theme_color_override("font_color", VisualConfig.get_team_color(winner))
 
 
 func _on_error(message: String) -> void:
 	status_label.text = "Error: %s" % message
-
-
-# --- Board interaction ---
-
-
-func _do_network_move(from: Vector2i, to: Vector2i) -> void:
-	_awaiting_own_move = true
-	_client.send_move(from, to)
-
-
-# --- State reconstruction ---
-
-
-func _rebuild_state(pieces: Array, captured_red: Array, captured_blue: Array) -> void:
-	_local_bs.reset()
-	for p: Dictionary in pieces:
-		var rank: int = int(p["rank"])
-		var piece_team: int = int(p["team"])
-		var pos: Vector2i = Vector2i(int(p["x"]), int(p["y"]))
-		var revealed: bool = p.get("revealed", false)
-		if rank == -1:
-			rank = PieceData.Rank.FLAG
-			revealed = false
-		var pid: int = _local_bs.add_piece(rank, piece_team as PieceData.Team, pos)
-		_local_bs.pieces[pid]["revealed"] = revealed
-
-	_local_caps[PieceData.Team.RED].clear()
-	for r: int in captured_red:
-		_local_caps[PieceData.Team.RED].append(r)
-	_local_caps[PieceData.Team.BLUE].clear()
-	for r: int in captured_blue:
-		_local_caps[PieceData.Team.BLUE].append(r)
