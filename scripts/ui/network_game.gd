@@ -17,6 +17,7 @@ var turn_bar: PanelContainer = null
 var turn_label: Label = null
 var setup_phase: Control = null
 var main_scene: Control = null
+var game_ctrl: Node = null
 
 var _client: Node = null
 var _my_team: PieceData.Team = PieceData.Team.RED
@@ -41,7 +42,7 @@ func _ready() -> void:
 	)
 
 
-func setup_refs(b: Control, lh: PanelContainer, h: PanelContainer, tb: PanelContainer, tl: Label, sp: Control, ms: Control) -> void:
+func setup_refs(b: Control, lh: PanelContainer, h: PanelContainer, tb: PanelContainer, tl: Label, sp: Control, ms: Control, gc: Node) -> void:
 	board = b
 	left_hud = lh
 	hud = h
@@ -49,6 +50,7 @@ func setup_refs(b: Control, lh: PanelContainer, h: PanelContainer, tb: PanelCont
 	turn_label = tl
 	setup_phase = sp
 	main_scene = ms
+	game_ctrl = gc
 
 
 func show_connect() -> void:
@@ -192,10 +194,11 @@ func _on_phase_changed(phase: String) -> void:
 			GameManager.current_phase = GameManager.GamePhase.MENU
 			_show_game_ui()
 			_update_turn_label()
-			if not board.square_clicked.is_connected(_on_board_click):
-				board.square_clicked.connect(_on_board_click)
-			if not board.move_ready.is_connected(_on_move_ready):
-				board.move_ready.connect(_on_move_ready)
+			# Configure controller for network play
+			game_ctrl.get_board_state = func() -> BoardState: return _local_bs
+			game_ctrl.get_my_team = func() -> PieceData.Team: return _my_team
+			game_ctrl.is_my_turn = func() -> bool: return _phase == "play" and _current_team == _my_team
+			game_ctrl.on_move = _do_network_move
 		"game_over":
 			pass
 
@@ -235,7 +238,7 @@ func _on_setup_complete(_team: PieceData.Team) -> void:
 
 func _on_turn_changed(team: PieceData.Team) -> void:
 	_current_team = team
-	board.clear_selection()
+	game_ctrl.clear_selection()
 	_update_turn_label()
 
 
@@ -304,19 +307,9 @@ func _on_error(message: String) -> void:
 # --- Board interaction ---
 
 
-func _on_board_click(pos: Vector2i) -> void:
-	if _phase != "play" or _current_team != _my_team:
-		return
-	board.handle_click(pos, _local_bs, _my_team, _do_network_move)
-
-
 func _do_network_move(from: Vector2i, to: Vector2i) -> void:
 	_awaiting_own_move = true
 	_client.send_move(from, to)
-
-
-func _on_move_ready(_from: Vector2i, _to: Vector2i) -> void:
-	pass
 
 
 # --- State reconstruction ---

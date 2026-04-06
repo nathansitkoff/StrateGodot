@@ -16,7 +16,7 @@ extends Control
 @onready var main_menu: ColorRect = %MainMenu
 @onready var quit_button: Button = %QuitButton
 
-var play_controller: Node
+var game_ctrl: Node
 var ai_players: Dictionary = {}
 var _pending_mode: GameManager.GameMode = GameManager.GameMode.LOCAL_2P
 var _recorder: GameRecorder = null
@@ -46,12 +46,13 @@ func _ready() -> void:
 	replay_browser.replay_selected.connect(_on_replay_selected)
 	replay_viewer.back_pressed.connect(_on_replay_viewer_back)
 
-	play_controller = Node.new()
-	play_controller.set_script(preload("res://scripts/ui/play_controller.gd"))
-	add_child(play_controller)
-	play_controller.setup(board)
+	game_ctrl = Node.new()
+	game_ctrl.set_script(preload("res://scripts/ui/game_controller.gd"))
+	add_child(game_ctrl)
+	game_ctrl.setup(board)
 	quit_button.pressed.connect(_exit_to_menu)
 	board.move_ready.connect(_on_move_ready)
+	GameManager.turn_changed.connect(func(_t: PieceData.Team) -> void: game_ctrl.clear_selection())
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -151,6 +152,14 @@ func _on_phase_changed(phase: GameManager.GamePhase) -> void:
 			hud.clear_combat()
 			_update_turn_bar(GameManager.current_team)
 			_update_remaining()
+			# Configure controller for local/AI play
+			game_ctrl.get_board_state = func() -> BoardState: return GameManager.board_state
+			game_ctrl.get_my_team = func() -> PieceData.Team: return GameManager.current_team
+			game_ctrl.is_my_turn = func() -> bool:
+				return GameManager.current_phase == GameManager.GamePhase.PLAY and not _is_ai_team(GameManager.current_team)
+			game_ctrl.on_move = func(from: Vector2i, to: Vector2i) -> void:
+				var piece_id: int = GameManager.board_state.get_piece_at(from)
+				board.animate_move_with_combat(piece_id, from, to)
 			board.refresh()
 		GameManager.GamePhase.GAME_OVER:
 			pass
@@ -246,7 +255,7 @@ func _on_headless_back() -> void:
 
 
 func _on_network_selected() -> void:
-	network_game.setup_refs(board, left_hud, hud, turn_bar, turn_label, setup_phase, self)
+	network_game.setup_refs(board, left_hud, hud, turn_bar, turn_label, setup_phase, self, game_ctrl)
 	network_game.show_connect()
 
 
